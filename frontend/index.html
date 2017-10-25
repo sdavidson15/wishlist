@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Wishlist</title>
+    <link rel="stylesheet" type="text/css" href="wishlist.css">
+</head>
+
+<body>
+    <div id="div">Hello, World!</div>
+    <form id="text-form" method="post">
+        <input id="text" type="text">
+        <button type="button" id="button">Submit</button>
+    </form>
+    <script>
+        $("#button").click(function () {
+            $.post("text", $("#text-form").serialize(), function (data) {
+                alert(data);
+            });
+            $("#div").html("New data");
+        });
+    </script>
+    <!--script type="text/javascript" src="wishlist.js"></script-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</body>
+
+</html>
