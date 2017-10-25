@@ -1,7 +1,7 @@
 package appengine
 
-import "../wishlist"
+import "github.com/sdavidson15/wishlist/backend"
 
 func init() {
-	wishlist.Run()
+	backend.Run()
 }

@@ -1,7 +1,7 @@
 package wishlist
 
 import (
-	"wishlist/rest"
+	"github.com/sdavidson15/wishlist/backend/rest"
 )
 
 func Run() {
