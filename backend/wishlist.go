@@ -1,4 +1,4 @@
-package wishlist
+package backend
 
 import (
 	"github.com/sdavidson15/wishlist/backend/rest"

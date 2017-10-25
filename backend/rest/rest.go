@@ -22,6 +22,6 @@ func Start() {
 			Name(route.Name).
 			Handler(handler)
 	}
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("../../frontend")))
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
