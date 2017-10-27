@@ -91,7 +91,7 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
 	// TODO: Retrieve the sessionID from the request
 	sessionID := "sessionID"
-	items, err := h.manager.GetLists(sessionID)
+	_, err := h.manager.GetLists(sessionID)
 	if err != nil {
 		sendServerError(w, r, err)
 	}
