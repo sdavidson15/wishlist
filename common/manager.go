@@ -35,7 +35,7 @@ func (m *Manager) GetLists(sessionName string) (model.Items, error) {
 			return nil, err
 		}
 		sort.Sort(SortableItems(currentItems))
-		items = append(items, currentItems)
+		items = append(items, currentItems...)
 	}
 
 	return items, nil
