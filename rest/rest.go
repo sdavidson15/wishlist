@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/sdavidson15/wishlist/common"
+	"wishlist/common"
 )
 
 func Start(manager *common.Manager) {

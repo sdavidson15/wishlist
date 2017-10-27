@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/sdavidson15/wishlist/model"
+	"wishlist/model"
 )
 
 type SortableItems []model.Item
@@ -15,6 +15,9 @@ func (s SortableItems) Swap(i, j int) {
 }
 
 func (s SortableItems) Less(i, j int) bool {
+	if s[i].Owner != s[j].Owner {
+		return s[i].Owner < s[j].Owner
+	}
 	return s[i].Order < s[j].Order
 }
 

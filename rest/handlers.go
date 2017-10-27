@@ -8,8 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/sdavidson15/wishlist/common"
-	"github.com/sdavidson15/wishlist/model"
+	"wishlist/common"
+	"wishlist/model"
+
+	"github.com/gorilla/mux"
 )
 
 type Handler struct {
@@ -45,12 +47,15 @@ func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := r.Body.Close(); err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := json.Unmarshal(body, &sir); err != nil {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
+		return
 	}
 
 	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, false)
@@ -69,12 +74,15 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := r.Body.Close(); err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := json.Unmarshal(body, &sir); err != nil {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
+		return
 	}
 
 	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, true)
@@ -89,33 +97,47 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
-	// TODO: Retrieve the sessionID from the request
-	sessionID := "sessionID"
-	_, err := h.manager.GetLists(sessionID)
+	params := mux.Vars(r)
+	sessionName := params["session"]
+
+	_, err := h.manager.GetLists(sessionName)
 	if err != nil {
 		sendServerError(w, r, err)
+		return
 	}
-	// TODO: JSON serialize items and send the json as resp
-	sendResponse(w, r, "Got 'em", http.StatusOK)
+
+	items, err := h.manager.GetLists(sessionName)
+	if err != nil {
+		sendServerError(w, r, err)
+		return
+	}
+
+	sendResponse(w, r, items, http.StatusOK)
 }
 
 func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
-	// TODO: Retrieve the sessionID from the request
+	params := mux.Vars(r)
+	sessionName := params["session"]
+
 	var ur UpdateRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := r.Body.Close(); err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 	if err := json.Unmarshal(body, &ur); err != nil {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
+		return
 	}
 
-	err = h.manager.UpdateLists(ur.username, ur.userItems, ur.otherItems)
+	err = h.manager.UpdateLists(sessionName, ur.username, ur.userItems, ur.otherItems)
 	if err != nil {
 		sendServerError(w, r, err)
+		return
 	}
 
 	sendResponse(w, r, "Lists updated.", http.StatusOK)

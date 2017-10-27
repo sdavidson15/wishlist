@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/sdavidson15/wishlist/model"
+	"wishlist/model"
 )
 
 type Storage struct {
@@ -21,12 +21,17 @@ func (s Storage) GetUsers(sessionName string) ([]model.User, error) {
 	return []model.User{}, nil
 }
 
-func (s Storage) GetItems(sessionName, username string) ([]model.Item, error) {
-	// TODO: Retrieve items by sessionName and username
+func (s Storage) GetItems(sessionName string) ([]model.Item, error) {
+	// TODO: Retrieve items by sessionName
 	return []model.Item{}, nil
 }
 
-func (s Storage) UpdateItems(sessionName string, newItems model.Items) error {
-	// TODO: Update all the items in the list
+func (s Storage) StoreNewItems(sessionName, owner string, newItems model.Items) error {
+	// TODO: Clear all the items for this user, and then add all the newItems
+	return nil
+}
+
+func (s Storage) UpdateItemClaimers(sessionName, owner string, newItems model.Items) error {
+	// TODO: Set the claimer row for each stored item in that appears in newItems to newItem.Claimer.
 	return nil
 }
