@@ -1,0 +1,3 @@
+database-driver=mysql
+database-source=root@tcp(localhost)/mysql
+rest-URI=:8080

@@ -14,6 +14,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const byteLimit int64 = 1048576
+
 type Handler struct {
 	manager *common.Manager
 }
@@ -44,7 +46,7 @@ func (h *Handler) GetText(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 	var sir SignInRequest
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, byteLimit))
 	if err != nil {
 		sendServerError(w, r, err)
 		return
@@ -71,7 +73,7 @@ func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 	var sir SignInRequest
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, byteLimit))
 	if err != nil {
 		sendServerError(w, r, err)
 		return
@@ -120,7 +122,7 @@ func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
 	sessionName := params["session"]
 
 	var ur UpdateRequest
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, byteLimit))
 	if err != nil {
 		sendServerError(w, r, err)
 		return

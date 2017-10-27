@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -9,7 +10,7 @@ import (
 	"wishlist/common"
 )
 
-func Start(manager *common.Manager) {
+func Start(manager *common.Manager, restUri string) {
 	router := mux.NewRouter().StrictSlash(true)
 	h := &Handler{manager}
 	for _, route := range h.Routes() {
@@ -25,5 +26,6 @@ func Start(manager *common.Manager) {
 			Handler(handler)
 	}
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Print(fmt.Sprintf("Serving on %s", restUri))
+	log.Fatal(http.ListenAndServe(restUri, router))
 }
