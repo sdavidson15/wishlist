@@ -53,13 +53,13 @@ func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, false)
+	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, false)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
 	case !success:
 		sendResponse(w, r, "Sign in failed.", http.StatusUnauthorized)
-	case succces:
+	case success:
 		sendResponse(w, r, "Signed in.", http.StatusOK)
 	}
 }
@@ -77,20 +77,21 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, true)
+	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, true)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
 	case !success:
 		sendResponse(w, r, "Sign in failed.", http.StatusUnauthorized)
-	case succces:
+	case success:
 		sendResponse(w, r, "Signed in.", http.StatusOK)
 	}
 }
 
 func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
 	// TODO: Retrieve the sessionID from the request
-	items, err := common.GetLists(sessionID)
+	sessionID := "sessionID"
+	items, err := h.manager.GetLists(sessionID)
 	if err != nil {
 		sendServerError(w, r, err)
 	}
@@ -112,7 +113,7 @@ func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	err = h.manager.UpdateLists(ur.Username, ur.UserItems, ur.OtherItems)
+	err = h.manager.UpdateLists(ur.username, ur.userItems, ur.otherItems)
 	if err != nil {
 		sendServerError(w, r, err)
 	}
