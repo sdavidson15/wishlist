@@ -7,36 +7,40 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"wishlist/common"
 
+	"github.com/sdavidson15/wishlist/common"
 	"github.com/sdavidson15/wishlist/model"
 )
+
+type Handler struct {
+	manager *common.Manager
+}
 
 type UpdateTextRequest struct {
 	text string
 }
 
 type SignInRequest struct {
-	SessionName string
-	Username    string
-	Password    string
+	sessionName string
+	username    string
+	password    string
 }
 
 type UpdateRequest struct {
-	Username   string
-	UserItems  model.Items
-	OtherItems model.Items
+	username   string
+	userItems  model.Items
+	otherItems model.Items
 }
 
 // This func only exists as my control variable. If this isn't working,
 // then something more than just my code is going wrong.
-func GetText(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetText(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func SignIn(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 	var sir SignInRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
@@ -49,7 +53,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	success, err := common.SignIn(sir.SessionName, sir.Username, sir.Password, false)
+	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, false)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
@@ -60,7 +64,7 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CookieSignIn(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 	var sir SignInRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
@@ -73,7 +77,7 @@ func CookieSignIn(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	success, err := common.SignIn(sir.SessionName, sir.Username, sir.Password, true)
+	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, true)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
@@ -84,7 +88,7 @@ func CookieSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetLists(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
 	// TODO: Retrieve the sessionID from the request
 	items, err := common.GetLists(sessionID)
 	if err != nil {
@@ -94,7 +98,7 @@ func GetLists(w http.ResponseWriter, r *http.Request) {
 	sendResponse(w, r, "Got 'em", http.StatusOK)
 }
 
-func UpdateLists(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
 	// TODO: Retrieve the sessionID from the request
 	var ur UpdateRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
@@ -108,7 +112,7 @@ func UpdateLists(w http.ResponseWriter, r *http.Request) {
 		sendResponse(w, r, err, http.StatusUnprocessableEntity)
 	}
 
-	err = common.UpdateLists(ur.Username, ur.UserItems, ur.OtherItems)
+	err = h.manager.UpdateLists(ur.Username, ur.UserItems, ur.OtherItems)
 	if err != nil {
 		sendServerError(w, r, err)
 	}

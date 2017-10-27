@@ -4,40 +4,44 @@ import (
 	"sort"
 
 	"github.com/sdavidson15/wishlist/model"
+	"github.com/sdavidson15/wishlist/storage"
 )
 
-func SignIn(sessionName, username, password string, usingCookie bool) (bool, error) {
-	_, err := ctx.storage.ConfirmUser(sessionName, username, password, usingCookie)
-	if err == model.ErrUserNotFound {
-		return false, nil
-	} else if err != nil {
+type Manager struct {
+	storage storage.Storage
+}
+
+func (m *Manager) SignIn(sessionName, username, password string, usingCookie bool) (bool, error) {
+	_, err := m.storage.ConfirmUser(sessionName, username, password, usingCookie)
+	// TODO: If err is a row not found error, return false, nil.
+	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func GetLists(sessionName string) (model.Items, error) {
+func (m *Manager) GetLists(sessionName string) (model.Items, error) {
 	items := []model.Item{}
 
-	users, err := ctx.storage.GetUsers(sessionName)
+	users, err := m.storage.GetUsers(sessionName)
 	if err != nil {
 		return nil, err
 	}
 	sort.Sort(SortableUsers(users))
 
 	for _, user := range users {
-		currentItems, err := ctx.storage.GetItems(sessionName, user)
+		currentItems, err := m.storage.GetItems(sessionName, user.Name)
 		if err != nil {
 			return nil, err
 		}
 		sort.Sort(SortableItems(currentItems))
-		item = append(items, currentItems)
+		items = append(items, currentItems)
 	}
 
 	return items, nil
 }
 
-func UpdateLists(sessionName string, userList, otherList model.Items) error {
+func (m *Manager) UpdateLists(sessionName string, userList, otherList model.Items) error {
 	// TODO: Pull the current lists, compare with the lists you have, and batch an
 	// update
 	return nil

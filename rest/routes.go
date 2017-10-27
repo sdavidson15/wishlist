@@ -11,11 +11,13 @@ type Route struct {
 
 type Routes []Route
 
-var routes = Routes{
-	Route{"Get text", "GET", "/text", GetText},
+func (h *Handler) routes() Routes {
+	return Routes{
+		Route{"Get text", "GET", "/text", h.GetText},
 
-	Route{"Sign in", "PUT", "/signin", SignIn},
-	Route{"Sign in with cookie", "PUT", "/csignin", CookieSignIn},
-	Route{"Get lists", "GET", "/lists/{session}", GetLists},
-	Route{"Update lists", "PUT", "/lists/{session}", UpdateLists},
+		Route{"Sign in", "PUT", "/signin", h.SignIn},
+		Route{"Sign in with cookie", "PUT", "/csignin", h.CookieSignIn},
+		Route{"Get lists", "GET", "/lists/{session}", h.GetLists},
+		Route{"Update lists", "PUT", "/lists/{session}", h.UpdateLists},
+	}
 }
