@@ -1,4 +1,62 @@
-* {
-    font-family: Arial;
-    font-weight: bold;
+body { 
+    font-family: 'Ubuntu', sans-serif;
+    background:#333 url(image/bg-strip-dark.png) 0px 0px;
+    color: snow;
+}
+
+h4 {
+    color: #333;
+}
+
+input {
+    margin-bottom: 0.5em;
+    margin-top: 0.5em;
+    width: 90%;
+    border-radius: .3rem;
+}
+
+.jumbotron {
+    width: 80%;
+    margin: auto;
+    margin-bottom: 2em;
+    overflow: auto;
+    padding: 2em 2em 2em 2em;
+}
+
+#welcome_blurb {
+    width: 60%;
+    float: left;
+    padding-right: 2em;
+    margin-top: 1em;
+}
+
+#sign_in_form {
+    text-align: center;
+    width: 40%;
+    background-color: rgb(80, 79, 79);
+    border-radius: .5rem;
+    padding: 1em 1em 1em 1em;
+    margin: 0em 0em 0em 0em;
+    float: left;
+    overflow: auto;
+}
+
+#sign_in_link {
+    margin-top: 2em;
+    float: right;
+}
+
+#sign_in_button {
+    background-color: #4f8cee;
+    border-color: #4f8cee;
+    border-radius: .3rem;
+    color: snow;
+    font-size: 1.25em;
+}
+
+#help_link {
+    position: absolute;
+    bottom: 1.5em;
+    color: snow;
+    padding: 0.5em 0.5em 0.5em 0.5em;
 }
