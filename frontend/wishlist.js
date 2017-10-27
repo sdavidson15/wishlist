@@ -31,6 +31,13 @@ function renderHomepage() {
     if (cookieSession != "null" && cookieUser != "null" &&
         cookieSession != "" && cookieUser != "" &&
         cookieSession != null && cookieUser != null) {
+        // TODO: First send a sign in request with this cookie data and check that
+        // the session and user are valid. If so, reset all cookies, navigate to the
+        // wishlist page.
+
+        // Hey hackers! Just set your cookies for this site to store
+        // any existing session you're aware of, and any existing user
+        // you're aware of, and voila! You're in.
         window.location.href = "wishlist.html";
     }
     createBanner("Project Wish List",
@@ -43,21 +50,34 @@ function renderHomepage() {
     setupHomepageListeners();
 }
 
-function renderWishList() {
+async function runWishList() {
+    redrawWishList(true);
+    while (true) {
+        await sleep(30000);
+        redrawWishList(false);
+    }
+}
+
+async function redrawWishList(mustSignIn) {
     var session = getCookie("wl_session");
     var user = getCookie("wl_user");
-    // TODO: First send a sign in request with this cookie data and confirm that
-    // the session and user are valid. If not, reset all cookies. Otherwise,
-    // navigate to the home page.
-    if (session == "null" || user == "null" ||
-        session == "" || user == "" ||
-        session == null || user == null) {
+    if (mustSignIn) {
+        // TODO: First send a sign in request with this cookie data and confirm that
+        // the session and user are valid. If not, reset all cookies and navigate to 
+        // the home page.
+        if (session == "null" || user == "null" ||
+            session == "" || user == "" ||
+            session == null || user == null) {
 
-        window.location.href = "index.html";
+            // TODO: Remove this condition once the sign in with cookie is in place.
+            window.location.href = "index.html";
+        }
     }
     // TODO: GET wishlist data from the server. For now, it's hardcoded.
     // Items will be populated by the data from the GET. They will be strictly
     // ordered, much like this example.
+    await sleep(5000); // sleep to mock waiting for the server. Yeah, I know 5 seconds is a long time.
+
     var items = [
         { name: "Dre's #1", owner: "Dre", claimer: "Snoop" },
         { name: "Dre's #2", owner: "Dre", claimer: "" },
@@ -83,6 +103,13 @@ function renderWishList() {
         { name: "Nate Dogg's #5", owner: "Nate Dogg", claimer: "" },
         { name: "Nate Dogg's #6", owner: "Nate Dogg", claimer: "Warren G" }
     ];
+
+    document.getElementById("lists").innerHTML = "";
+    document.getElementById("banner").innerHTML = "";
+    renderWishList(session, user, items);
+}
+
+function renderWishList(session, user, items) {
     createBanner(session,
         "font-family: \"Tangerine\", serif;" +
         "font-size: 5em;" +
@@ -93,12 +120,6 @@ function renderWishList() {
     styleLinks();
 
     setupWishlistListeners(user);
-}
-
-function redrawWishList() {
-    document.getElementById("lists").innerHTML = "";
-    document.getElementById("banner").innerHTML = "";
-    renderWishList();
 }
 
 function createBanner(session, headerStyle) {
@@ -360,7 +381,7 @@ async function _onSave(user, saveButton) {
         }
     }
 
-    // TODO: PUT the update to the server, 
+    // TODO: PUT the update to the server. If something errors, reload the page to GET new, possibly conflicting, data.
 
     saveButton.innerHTML = "Saved";
     saveButton.setAttribute("style",
