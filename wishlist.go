@@ -8,5 +8,5 @@ import (
 
 func main() {
 	// TODO: Start database connection, wrap it in a storage struct, and wrap that storage struct in a manager.
-	rest.Start(&common.Manager{storage.Storage{}})
+	rest.Start(&common.NewManager(storage.Storage{}))
 }

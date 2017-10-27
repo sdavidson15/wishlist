@@ -11,6 +11,10 @@ type Manager struct {
 	storage storage.Storage
 }
 
+func NewManager(s storage.Storage) Manager {
+	return Manager{s}
+}
+
 func (m *Manager) SignIn(sessionName, username, password string, usingCookie bool) (bool, error) {
 	_, err := m.storage.ConfirmUser(sessionName, username, password, usingCookie)
 	// TODO: If err is a row not found error, return false, nil.
