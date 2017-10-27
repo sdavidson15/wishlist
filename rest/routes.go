@@ -11,7 +11,7 @@ type Route struct {
 
 type Routes []Route
 
-func (h *Handler) routes() Routes {
+func (h *Handler) Routes() Routes {
 	return Routes{
 		Route{"Get text", "GET", "/text", h.GetText},
 
