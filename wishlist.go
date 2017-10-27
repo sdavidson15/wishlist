@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sdavidson15/wishlist/backend/rest"
+	"github.com/sdavidson15/wishlist/rest"
 )
 
 func main() {
