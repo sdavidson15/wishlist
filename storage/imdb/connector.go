@@ -118,6 +118,11 @@ func (i *Imdb) Run() {
 }
 
 func (i *Imdb) SendRequest(sessionName, requestType string) ([]model.Item, []model.User, error) {
+	// TODO: Send uuid request id as well, so that you can always correlate a request with a commit.
+	// That way you can get rid of the update channel and use just the response channel.
+	// If a message received on the responseChan does not match the current request id, then it's a noop.
+	// That way i.Commit() can be called as often as possible without the fear of changing data if no prior
+	// request was sent.
 	i.requestChan <- &request{sessionName, requestType}
 	resp := <-i.responseChan
 	return resp.items, resp.users, resp.err

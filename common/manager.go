@@ -20,7 +20,7 @@ func NewManager(s storage.Storage) *Manager {
 func (m *Manager) SignIn(sessionName, username, password string, usingCookie bool) (bool, error) {
 	_, err := m.storage.ConfirmUser(sessionName, username, password, usingCookie)
 	if err != nil {
-		if err.Error() == "User not found" {
+		if err.Error() == "User not found" || err.Error() == "Session not found" {
 			return false, nil
 		}
 		return false, err

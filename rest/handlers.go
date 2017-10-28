@@ -2,8 +2,6 @@ package rest
 
 import (
 	"encoding/json"
-	"fmt"
-	"html"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,14 +33,6 @@ type UpdateRequest struct {
 	Username   string
 	UserItems  model.Items
 	OtherItems model.Items
-}
-
-// This func only exists as my control variable. If this isn't working,
-// then something more than just my code is going wrong.
-func (h *Handler) GetText(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {

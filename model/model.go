@@ -15,8 +15,3 @@ type User struct {
 	Session  string
 	Password string
 }
-
-// You may not need this struct
-type Session struct {
-	Name string
-}
