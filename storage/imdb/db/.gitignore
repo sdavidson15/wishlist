@@ -1,0 +1,3 @@
+*.json
+!ogwishlist_users.json
+!ogwishlist_items.json

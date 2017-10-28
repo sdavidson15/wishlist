@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"wishlist/common"
 	"wishlist/model"
@@ -21,19 +22,19 @@ type Handler struct {
 }
 
 type UpdateTextRequest struct {
-	text string
+	Text string
 }
 
 type SignInRequest struct {
-	sessionName string
-	username    string
-	password    string
+	SessionName string
+	Username    string
+	Password    string
 }
 
 type UpdateRequest struct {
-	username   string
-	userItems  model.Items
-	otherItems model.Items
+	Username   string
+	UserItems  model.Items
+	OtherItems model.Items
 }
 
 // This func only exists as my control variable. If this isn't working,
@@ -60,7 +61,7 @@ func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, false)
+	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, false)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
@@ -87,7 +88,7 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	success, err := h.manager.SignIn(sir.sessionName, sir.username, sir.password, true)
+	success, err := h.manager.SignIn(sir.SessionName, sir.Username, sir.Password, true)
 	switch {
 	case err != nil:
 		sendServerError(w, r, err)
@@ -101,15 +102,13 @@ func (h *Handler) CookieSignIn(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	sessionName := params["session"]
-
-	_, err := h.manager.GetLists(sessionName)
-	if err != nil {
-		sendServerError(w, r, err)
-		return
-	}
+	sessionName = strings.Replace(sessionName, "%20", " ", -1)
 
 	items, err := h.manager.GetLists(sessionName)
 	if err != nil {
+		if err.Error() == "Session not found" {
+			sendResponse(w, r, err, http.StatusNotFound)
+		}
 		sendServerError(w, r, err)
 		return
 	}
@@ -120,6 +119,7 @@ func (h *Handler) GetLists(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	sessionName := params["session"]
+	sessionName = strings.Replace(sessionName, "%20", " ", -1)
 
 	var ur UpdateRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, byteLimit))
@@ -136,7 +136,7 @@ func (h *Handler) UpdateLists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.manager.UpdateLists(sessionName, ur.username, ur.userItems, ur.otherItems)
+	err = h.manager.UpdateLists(sessionName, ur.Username, ur.UserItems, ur.OtherItems)
 	if err != nil {
 		sendServerError(w, r, err)
 		return

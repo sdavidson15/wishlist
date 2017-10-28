@@ -1,24 +1,28 @@
 package common
 
 import (
+	"fmt"
 	"sort"
 
+	"wishlist/common/util"
 	"wishlist/model"
 	"wishlist/storage"
 )
 
 type Manager struct {
-	storage *storage.Storage
+	storage storage.Storage
 }
 
-func NewManager(s *storage.Storage) *Manager {
+func NewManager(s storage.Storage) *Manager {
 	return &Manager{s}
 }
 
 func (m *Manager) SignIn(sessionName, username, password string, usingCookie bool) (bool, error) {
 	_, err := m.storage.ConfirmUser(sessionName, username, password, usingCookie)
-	// TODO: If err is a row not found error, return false, nil.
 	if err != nil {
+		if err.Error() == "User not found" {
+			return false, nil
+		}
 		return false, err
 	}
 	return true, nil
@@ -29,113 +33,110 @@ func (m *Manager) GetLists(sessionName string) (model.Items, error) {
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(SortableItems(items))
+	sort.Sort(util.SortableItems(items))
 
 	return items, nil
 }
 
-// This is not thread-safe. This should block at some point, probably on arrival to this func.
-func (m *Manager) UpdateLists(sessionName, username string, userItems, otherItems model.Items) error {
+func (m *Manager) UpdateLists(sessionName, username string, updatedUserItems, updatedClaimItems model.Items) error {
+	for i, item := range updatedUserItems {
+		for j, jtem := range updatedUserItems {
+			if i != j && item.Name == jtem.Name {
+				return fmt.Errorf("Duplicate item names are not permitted")
+			}
+		}
+	}
+
 	storedItems, err := m.storage.GetItems(sessionName)
 	if err != nil {
 		return err
 	}
 
-	users, err := m.storage.GetUsers(sessionName)
+	err = m.updateUserList(sessionName, username, updatedUserItems, storedItems)
 	if err != nil {
 		return err
 	}
-	sort.Sort(SortableUsers(users))
+	return m.updateClaims(sessionName, username, updatedClaimItems, storedItems)
+}
 
-	// Convert the incoming items into a map of owners to their list of items
-	updatedMapping := m.getListMapping(username, userItems, otherItems)
-	// Convert the stored items into a map of owners to their list of items
-	storedMapping := m.getListMapping("", nil, storedItems)
+func (m *Manager) updateUserList(sessionName, username string, updatedUserItems, storedItems model.Items) error {
+	storedUserItems := model.Items{}
+	for _, storedItem := range storedItems {
+		if storedItem.Owner == username {
+			storedUserItems = append(storedUserItems, storedItem)
+		}
+	}
 
-	// List of items to replace the requesting user's current items in the database
-	resultUserList := model.Items{}
+	finalUserItems := model.Items{}
 
-	// For the requesting user, compare the stored items to the updated items.
-	// If a stored item's name matches an updated item's name, collect the stored
-	// item, but use the updated item's order. The item may have been moved up
-	// or down the list.
-	// FIXME: This will fail if duplicate item names are allowed
-	matchedItemNames := []string{}
-	for _, storedItem := range storedMapping[username] {
-		for _, updatedItem := range updatedMapping[username] {
-			if storedItem.Name == updatedItem.Name {
-				resultUserList = append(resultUserList, model.Item{
-					Name:    storedItem.Name,
-					Session: storedItem.Session,
-					Owner:   storedItem.Owner,
-					Claimer: storedItem.Claimer,
-					Order:   updatedItem.Order,
-				})
-				matchedItemNames = append(matchedItemNames, storedItem.Name)
+	// Update the order and the claimers on the updatedUserItems
+	// Keep track of which items have been added to the finalUserItems
+	finalItemsMap := make(map[string]model.Item, 0)
+	for _, storedUserItem := range storedUserItems {
+		for _, updatedUserItem := range updatedUserItems {
+			if storedUserItem.Name == updatedUserItem.Name {
+				updatedUserItem.Claimer = storedUserItem.Claimer
+				finalUserItems = append(finalUserItems, updatedUserItem)
+				finalItemsMap[updatedUserItem.Name] = updatedUserItem
+			}
+		}
+	}
+	if len(finalUserItems) < len(updatedUserItems) {
+		// If there are more updated items than the ones matched
+		// from storage, then item(s) have been added to this user.
+		for _, updatedUserItem := range updatedUserItems {
+			if _, ok := finalItemsMap[updatedUserItem.Name]; !ok {
+				finalUserItems = append(finalUserItems, updatedUserItem)
+			}
+		}
+	}
+	sort.Sort(util.SortableItems(finalUserItems))
+
+	err := m.storage.ClearUserItems(sessionName, username)
+	if err != nil {
+		return err
+	}
+	return m.storage.StoreNewItems(sessionName, username, finalUserItems)
+}
+
+func (m *Manager) updateClaims(sessionName, username string, updatedItems, storedItems model.Items) error {
+	finalItems := model.Items{}
+
+	// Copy all the storedItems to finalItems, updating the item's
+	// claimer if needed.
+	for _, storedItem := range storedItems {
+		for _, updatedItem := range updatedItems {
+			if storedItem.Owner == updatedItem.Owner && storedItem.Name == updatedItem.Name {
+				storedItem.Claimer = updatedItem.Claimer
 				break
 			}
 		}
+		finalItems = append(finalItems, storedItem)
 	}
 
-	if len(matchedItemNames) != len(updatedMapping[username]) {
-		// If the number of matchedItemNames is less than the number
-		// of updated items for the requesting user, then new items
-		// were added to this user's list.
-		for _, item := range updatedMapping[username] {
-			found := false
-			for _, matchedItemName := range matchedItemNames {
-				if item.Name == matchedItemName {
-					found = true
-					break
-				}
-			}
-			if !found {
-				item.Claimer = ""
-				resultUserList = append(resultUserList, item)
-			}
+	// Break the finalItems up into a mapping of owner to item list
+	mapping := make(map[string]model.Items)
+	sort.Sort(util.SortableItems(finalItems))
+	for _, finalItem := range finalItems {
+		if _, ok := mapping[finalItem.Owner]; !ok {
+			mapping[finalItem.Owner] = model.Items{}
 		}
-	}
-	sort.Sort(SortableItems(resultUserList))
-	err = m.storage.ClearUserItems(sessionName, username)
-	if err != nil {
-		return err
-	}
-	err = m.storage.StoreNewItems(sessionName, username, resultUserList)
-	if err != nil {
-		return err
+		mapping[finalItem.Owner] = append(mapping[finalItem.Owner], finalItem)
 	}
 
-	// For all the other users that are not the requesting user, only the claimer needs to be updated
-	for _, user := range users {
-		if user.Name == username {
-			// This user's update has already been processed
+	for owner, newItems := range mapping {
+		if owner == username {
+			// A user can't update the claims on his/her own list
 			continue
 		}
 
-		updatedClaimItems := model.Items{}
-		for _, storedItem := range storedMapping[user.Name] {
-			for _, updatedItem := range updatedMapping[user.Name] {
-				if storedItem.Name == updatedItem.Name && storedItem.Claimer == "" || storedItem.Claimer == username {
-					// If the stored item is one of the updated items, and the stored item's
-					// claimer is empty or equal to the username, then update the claimer on
-					// this item.
-					updatedClaimItems = append(updatedClaimItems, model.Item{
-						Name:    storedItem.Name,
-						Session: storedItem.Session,
-						Owner:   storedItem.Owner,
-						Claimer: updatedItem.Claimer,
-						Order:   storedItem.Order,
-					})
-					break
-				}
-			}
+		err := m.storage.ClearUserItems(sessionName, owner)
+		if err != nil {
+			return err
 		}
-		if len(updatedClaimItems) > 0 {
-			err = m.storage.UpdateItemClaimers(sessionName, user.Name, updatedClaimItems)
-			if err != nil {
-				// TODO: Check for special cases that are evidence of bad state
-				return err
-			}
+		err = m.storage.StoreNewItems(sessionName, owner, newItems)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

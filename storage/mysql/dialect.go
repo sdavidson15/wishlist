@@ -1,4 +1,4 @@
-package storage
+package mysql
 
 var (
 	mySQLCreateUsersTable = `CREATE TABLE IF NOT EXISTS Users (
@@ -17,7 +17,6 @@ var (
 	mySQLGetSessionUsers   = `SELECT Name FROM Users WHERE Session = ?;`
 	mySQLGetSessionItems   = `SELECT * FROM Items WHERE Session = ?;`
 
-	mySQLAddItem           = `INSERT INTO Items (Name, Session, Owner, Claimer, _Order) VALUES (?, ?, ?, ?, ?);`
-	mySQLDeleteUserItems   = `DELETE FROM Items WHERE Session = ? AND Owner = ?;`
-	mySQLUpdateItemClaimer = `UPDATE Items SET Claimer = ? WHERE Session = ? AND Owner = ? AND Name = ?;`
+	mySQLAddItem         = `INSERT INTO Items (Name, Session, Owner, Claimer, _Order) VALUES (?, ?, ?, ?, ?);`
+	mySQLDeleteUserItems = `DELETE FROM Items WHERE Session = ? AND Owner = ?;`
 )

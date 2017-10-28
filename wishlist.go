@@ -2,17 +2,25 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"os"
 	"strings"
 
 	"wishlist/common"
 	"wishlist/rest"
 	"wishlist/storage"
+	"wishlist/storage/imdb"
+	"wishlist/storage/mysql"
 )
 
 func main() {
+	flags := flag.NewFlagSet("wishlist-flag-set", flag.ExitOnError)
+	inmem := flags.Bool("inmem", false, "Enter value true to use a database system that writes files into this project directory, rather than a MySQL database.")
+
+	flags.Parse(os.Args[1:])
+
 	dbDriver, dbSource, restUri := getConfiguration("config.txt")
-	store := getStorage(dbDriver, dbSource)
+	store := getStorage(dbDriver, dbSource, *inmem)
 	manager := common.NewManager(store)
 	rest.Start(manager, restUri)
 }
@@ -50,11 +58,20 @@ func getConfiguration(filePath string) (dbDriver, dbSource, restUri string) {
 	return
 }
 
-func getStorage(dbDriver, dbSource string) *storage.Storage {
-	store := &storage.Storage{}
-	err := store.StartConnection(storage.NewConfig(dbDriver, dbSource))
-	if err != nil {
-		panic(err)
+func getStorage(dbDriver, dbSource string, inmem bool) storage.Storage {
+	var store storage.Storage
+	if inmem {
+		imdb := &imdb.Imdb{}
+		imdb.StartConnection()
+		store = imdb
+	} else {
+		mysqlDB := &mysql.MySqlDb{}
+		err := mysqlDB.StartConnection(mysql.NewConfig(dbDriver, dbSource))
+		if err != nil {
+			panic(err)
+		}
+		store = mysqlDB
 	}
+
 	return store
 }

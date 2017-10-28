@@ -1,4 +1,4 @@
-package storage
+package mysql
 
 import (
 	"database/sql"
@@ -14,15 +14,15 @@ type Config struct {
 	dataSource string
 }
 
-type Storage struct {
-	db *sql.DB
-}
-
 func NewConfig(driver, dataSource string) Config {
 	return Config{driver, dataSource}
 }
 
-func (s *Storage) StartConnection(cfg Config) error {
+type MySqlDb struct {
+	db *sql.DB
+}
+
+func (s *MySqlDb) StartConnection(cfg Config) error {
 	db, err := sql.Open(cfg.driver, cfg.dataSource)
 	if err != nil {
 		return err
@@ -35,14 +35,14 @@ func (s *Storage) StartConnection(cfg Config) error {
 	return s.initTables()
 }
 
-func (s *Storage) initTables() error {
+func (s *MySqlDb) initTables() error {
 	if err := s.initUsersTable(); err != nil {
 		return err
 	}
 	return s.initItemsTable()
 }
 
-func (s *Storage) initUsersTable() error {
+func (s *MySqlDb) initUsersTable() error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (s *Storage) initUsersTable() error {
 	return tx.Commit()
 }
 
-func (s *Storage) initItemsTable() error {
+func (s *MySqlDb) initItemsTable() error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (s *Storage) initItemsTable() error {
 	return tx.Commit()
 }
 
-func (s *Storage) ConfirmUser(sessionName, username, password string, usingCookie bool) (model.User, error) {
+func (s *MySqlDb) ConfirmUser(sessionName, username, password string, usingCookie bool) (model.User, error) {
 	var rows *sql.Rows
 	if usingCookie {
 		rows, err := s.db.Query(mySQLGetUserNoPassword, sessionName, username)
@@ -109,7 +109,7 @@ func (s *Storage) ConfirmUser(sessionName, username, password string, usingCooki
 	return model.User{name, sessionName, ""}, nil
 }
 
-func (s *Storage) GetUsers(sessionName string) ([]model.User, error) {
+func (s *MySqlDb) GetUsers(sessionName string) ([]model.User, error) {
 	rows, err := s.db.Query(mySQLGetSessionUsers, sessionName)
 	if err != nil {
 		return []model.User{}, err
@@ -136,7 +136,7 @@ func (s *Storage) GetUsers(sessionName string) ([]model.User, error) {
 	return users, nil
 }
 
-func (s *Storage) GetItems(sessionName string) ([]model.Item, error) {
+func (s *MySqlDb) GetItems(sessionName string) (model.Items, error) {
 	rows, err := s.db.Query(mySQLGetSessionItems, sessionName)
 	if err != nil {
 		return []model.Item{}, err
@@ -166,7 +166,7 @@ func (s *Storage) GetItems(sessionName string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (s *Storage) StoreNewItems(sessionName, owner string, newItems model.Items) error {
+func (s *MySqlDb) StoreNewItems(sessionName, owner string, newItems model.Items) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -188,7 +188,7 @@ func (s *Storage) StoreNewItems(sessionName, owner string, newItems model.Items)
 	return tx.Commit()
 }
 
-func (s *Storage) ClearUserItems(sessionName, owner string) error {
+func (s *MySqlDb) ClearUserItems(sessionName, owner string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -203,28 +203,6 @@ func (s *Storage) ClearUserItems(sessionName, owner string) error {
 	_, err = stmt.Exec(sessionName, owner)
 	if err != nil {
 		return err
-	}
-
-	return tx.Commit()
-}
-
-func (s *Storage) UpdateItemClaimers(sessionName, owner string, newItems model.Items) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	stmt, err := tx.Prepare(mySQLUpdateItemClaimer)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for _, i := range newItems {
-		_, err := stmt.Exec(i.Claimer, sessionName, owner, i.Name)
-		if err != nil {
-			return err
-		}
 	}
 
 	return tx.Commit()
