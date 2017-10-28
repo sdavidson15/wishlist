@@ -334,6 +334,7 @@ async function _onSave(_session, user, saveButton) {
     }
 
     await sleep(1000);
+    saveButton.removeAttribute("disabled");
     styleSaveButton(saveButton, "Save", "#69a0f3")
 }
 
@@ -478,6 +479,6 @@ function sendUpdateToServer(session, user, _userItems, _otherItems) {
 }
 
 function serverError() {
-    alert("Something went wrong." + msg);
+    alert("Something went wrong.");
     location.reload();
 }
