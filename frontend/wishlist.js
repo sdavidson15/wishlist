@@ -1,3 +1,5 @@
+// TODO: Pull all the styling into a css file, and just apply classes where needed.
+
 function renderHomepage() {
     var cookieSession = (getCookie("wl_session") == null) ? "" : getCookie("wl_session");
     var cookieUser = (getCookie("wl_user") == null) ? "" : getCookie("wl_user");
@@ -66,52 +68,77 @@ function createBanner(session, headerStyle) {
 }
 
 function populateListsDiv(user, items) {
+    // Prepare the lists
     var listsDiv = document.getElementById("lists");
+    var otherListsDiv = document.createElement("div");
+    otherListsDiv.setAttribute("id", "other_lists");
+    otherListsDiv.setAttribute("style",
+        "overflow: auto;" +
+        "white-space: nowrap;" +
+        "width: 82%;" +
+        "padding-bottom: 1em;" +
+        "margin: -0.05em 0em 0em 0.3em;" +
+        "float: left;"
+    );
+    listsDiv.appendChild(otherListsDiv);
 
-    var numOwners = 1;
-    var currentOwner = items[0].owner;
-    for (i = 1; i < items.length; i++) {
-        if (items[i].owner != currentOwner) {
-            numOwners++;
-            currentOwner = items[i].owner;
-        }
-    }
-
+    // Create the items
     var owners = [];
     for (i = 0; i < items.length; i++) {
         var item = items[i];
+        var currentListsDiv = (item.owner == user) ? listsDiv : otherListsDiv;
         if (!owners.includes(item.owner)) {
-            var list = createList(item.owner, numOwners);
-            var listItem = createListItem(user, item, true, false);
+            var list = createList(user, item.owner);
+            var listItem = createListItem(user, item, true);
             list.appendChild(listItem);
             owners.push(item.owner);
-            listsDiv.appendChild(list);
+            currentListsDiv.appendChild(list);
         } else {
             var list = document.getElementById("list_" + item.owner);
-            var listItem = createListItem(user, item, false, false);
+            var listItem = createListItem(user, item, false);
             list.appendChild(listItem);
         }
     }
-    var addItem = createListItem(user, null, false, true);
+
+    // Add the "Add item..." cell
+    var addItem = createAddItem();
     document.getElementById("list_" + user).appendChild(addItem);
 
-    listsDiv.setAttribute("style", "width: 97%;" +
-        "margin: auto; margin-top: 2em;" +
-        "margin-bottom: 2em; overflow: auto;" +
-        "padding: 1em 1em 1em 1em;");
+    // Style the lists' container
+    listsDiv.appendChild(otherListsDiv);
+    listsDiv.setAttribute("style",
+        "width: 97%;" +
+        "margin: auto;" +
+        "margin-top: 2em;" +
+        "margin-bottom: 2em;" +
+        "padding: 1em;" +
+        "overflow: auto;"
+    );
 }
 
-function createList(owner, numOwners) {
+function createList(user, owner) {
     var table = document.createElement("table");
     table.setAttribute("id", "list_" + owner);
     table.setAttribute("class", "table table-bordered");
 
-    var listWidth = Math.floor((1 / numOwners) * 100)
-    table.setAttribute("style",
-        "float: left;" +
-        "width: " + listWidth + "%;" +
-        "margin-bottom: 0em;"
-    );
+    if (user != owner) {
+        table.setAttribute("style",
+            "width: 22%;" +
+            "vertical-align: top;" +
+            "margin: 0;" +
+            "padding: 0;" +
+            "display: inline-block;"
+        );
+    } else {
+        table.setAttribute("style",
+            "width: 17%;" +
+            "vertical-align: top;" +
+            "margin: 0;" +
+            "padding: 0;" +
+            "float: left;"
+        );
+    }
+
 
     var header = document.createElement("th");
     header.setAttribute("style", "background-color: snow;");
@@ -123,42 +150,82 @@ function createList(owner, numOwners) {
     return table;
 }
 
-function createListItem(user, item, isFirstItem, isAddItemCell) {
+function createListItem(user, item, isFirstItem) {
+    // Table data container
     var itemData = document.createElement("td");
-    if (isAddItemCell) {
-        itemData.setAttribute("style", "background-color: LightGray;");
+    var cellColor = (isFirstItem) ? "#69a0f3" : "snow";
+    itemData.setAttribute("style",
+        "background-color: " + cellColor + ";" +
+        "height: 3em;" +
+        "padding: 0;"
+    );
 
-        var addItemLink = document.createElement("a");
-        addItemLink.setAttribute("id", "add_item");
-        addItemLink.setAttribute("href", "#");
-        addItemLink.setAttribute("style", "color: black;");
-        addItemLink.appendChild(document.createTextNode("Add item..."));
-        itemData.appendChild(addItemLink);
-    } else {
-        var itemDiv = document.createElement("div");
-        if (user == item.owner) {
-            itemDiv.setAttribute("contenteditable", "")
-        } else {
-            itemDiv.setAttribute("style", "width: 90%; float:left;")
+    // Price box
+    var priceDiv = document.createElement("div");
+    priceDiv.setAttribute("style",
+        "background-color: LightGreen;" +
+        "height: 3em;" +
+        "width: 3em;" +
+        "float: left;" +
+        "line-height: 3em;" +
+        "text-align: center;" +
+        "overflow: hidden;" +
+        "white-space: nowrap;"
+    );
+    if (user == item.owner) { priceDiv.setAttribute("contenteditable", "") }
+    priceDiv.innerHTML = item.price;
+    itemData.appendChild(priceDiv);
+
+    // Content div
+    var contentDiv = document.createElement("div");
+    itemData.appendChild(contentDiv);
+    var contentDivWidth = 8;
+    if (user == item.owner) {
+        contentDiv.setAttribute("contenteditable", "")
+        contentDivWidth = 10;
+    } else if (item.claimer != "" && item.claimer != user) {
+        contentDivWidth = 10.8;
+    }
+    contentDiv.setAttribute("style",
+        "width: " + contentDivWidth + "em;" +
+        "float:left;" +
+        "line-height: 3em;" +
+        "padding-left: 1em;" +
+        "overflow: hidden;" +
+        "white-space: nowrap;"
+    );
+    contentDiv.appendChild(document.createTextNode(item.name));
+
+    // Checkbox
+    if (item.claimer == "" && user != item.owner || item.claimer == user) {
+        var checkBox = document.createElement("input");
+        checkBox.setAttribute("type", "checkbox");
+        checkBox.setAttribute("style",
+            "float: right;" +
+            "margin: 1em 1em 0em 1em;"
+        );
+        itemData.appendChild(checkBox);
+        if (item.claimer == user) {
+            checkBox.setAttribute("checked", "");
         }
-        itemDiv.appendChild(document.createTextNode(item.name));
-
-        var cellColor = (isFirstItem) ? "#69a0f3" : "snow";
-        itemData.setAttribute("style", "background-color: " + cellColor + ";");
-        itemData.appendChild(itemDiv);
     }
 
-    if (!isAddItemCell) {
-        if (item.claimer == "" && user != item.owner || item.claimer == user) {
-            var checkBox = document.createElement("input");
-            checkBox.setAttribute("type", "checkbox");
-            checkBox.setAttribute("style", "float: right;");
-            itemData.appendChild(checkBox);
-            if (item.claimer == user) {
-                checkBox.setAttribute("checked", "");
-            }
-        }
-    }
+    var itemRow = document.createElement("tr");
+    itemRow.appendChild(itemData);
+    return itemRow;
+}
+
+function createAddItem() {
+    var itemData = document.createElement("td");
+    itemData.setAttribute("style", "background-color: LightGray;");
+
+    var addItemLink = document.createElement("a");
+    addItemLink.setAttribute("id", "add_item");
+    addItemLink.setAttribute("href", "#");
+    addItemLink.setAttribute("style", "color: black;");
+    addItemLink.appendChild(document.createTextNode("Add item..."));
+    itemData.appendChild(addItemLink);
+
     var itemRow = document.createElement("tr");
     itemRow.appendChild(itemData);
     return itemRow;
@@ -253,7 +320,7 @@ function _onAddItem(user) {
         return;
     }
 
-    var newItem = createListItem(user, { name: "", owner: user, claimer: "" }, false, false);
+    var newItem = createListItem(user, { name: "", owner: user, claimer: "", price: "" }, false);
     newItem.addEventListener("contextmenu", function (e) {
         e.preventDefault();
         _onRemoveItem(user, e.target);
@@ -288,36 +355,40 @@ async function _onSave(_session, user, saveButton) {
     var userItems = [];
     var claimableItems = [];
 
-    // Gather the update
-    var lists = document.getElementById("lists");
-    for (i = 0; i < lists.children.length - 1; i++) {
-        var list = lists.children[i];
+    // Gather the update from this user
+    var userList = document.getElementById("lists").children[0];
+    for (j = 1; j < userList.children.length - 1; j++) {
+        var itemName = userList.children[j].firstChild.children[1].innerHTML;
+        var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
+        userItems.push({
+            name: itemName,
+            session: _session,
+            owner: user,
+            claimer: "",
+            price: itemPrice,
+            order: j - 1
+        });
+    }
+
+    // Gather the update from the other users
+    var otherLists = document.getElementById("other_lists");
+    for (i = 0; i < otherLists.children.length; i++) {
+        var list = otherLists.children[i];
         var listOwner = list.firstChild.firstChild.innerHTML;
-        if (listOwner == user) {
-            for (j = 1; j < list.children.length - 1; j++) {
-                var itemDiv = list.children[j].firstChild.firstChild;
-                userItems.push({
-                    name: itemDiv.innerHTML,
+        for (j = 1; j < list.children.length; j++) {
+            var itemData = list.children[j].firstChild;
+            if (itemData.children.length == 3) {
+                var checkbox = itemData.children[2];
+                var itemClaimer = (checkbox.checked) ? user : "";
+                var itemPrice = itemData.firstChild.innerHTML;
+                claimableItems.push({
+                    name: itemData.children[1].innerHTML,
                     session: _session,
                     owner: listOwner,
-                    claimer: "",
+                    claimer: itemClaimer,
+                    price: itemPrice,
                     order: j - 1
                 });
-            }
-        } else {
-            for (j = 1; j < list.children.length; j++) {
-                var itemData = list.children[j].firstChild;
-                if (itemData.children.length == 2) {
-                    var checkbox = itemData.children[1];
-                    var itemClaimer = (checkbox.checked) ? user : "";
-                    claimableItems.push({
-                        name: itemData.children[0].innerHTML,
-                        session: _session,
-                        owner: listOwner,
-                        claimer: itemClaimer,
-                        order: j - 1
-                    });
-                }
             }
         }
     }
@@ -453,7 +524,8 @@ function getItemsFromServer(session, user) {
         var _name = respItems[i].Name;
         var _owner = respItems[i].Owner;
         var _claimer = (_owner != user) ? respItems[i].Claimer : "";
-        items.push({ name: _name, owner: _owner, claimer: _claimer });
+        var _price = (respItems[i].Price != null) ? respItems[i].Price : "";
+        items.push({ name: _name, owner: _owner, claimer: _claimer, price: _price });
     }
 
     return items;

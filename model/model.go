@@ -5,6 +5,7 @@ type Item struct {
 	Session string
 	Owner   string
 	Claimer string
+	Price   string
 	Order   int
 }
 
