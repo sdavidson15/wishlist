@@ -245,7 +245,7 @@ function addSaveButton() {
     var saveButton = document.createElement("button");
     saveButton.setAttribute("id", "save_button");
     saveButton.appendChild(document.createTextNode("Save"));
-    styleSaveButton(saveButton, "Save", "#69a0f3")
+    styleButton(saveButton, "Save", "#69a0f3")
 
     saveDiv.appendChild(saveButton);
     listsDiv.appendChild(saveDiv);
@@ -279,11 +279,24 @@ function setupWishlistListeners(session, user) {
         _onSave(session, user, e.target);
     });
     var userList = document.getElementById("list_" + user);
-    for (i = 0; i < userList.children.length; i++) {
+    for (i = 1; i < userList.children.length; i++) {
         userList.children[i].addEventListener("contextmenu", function (e) {
             e.preventDefault();
             _onRemoveItem(user, e.target);
         });
+        userList.children[i].addEventListener("dblclick", function (e) {
+            _onShowDescr(user, e.target);
+        });
+    }
+
+    var otherLists = document.getElementById("other_lists");
+    for (i = 0; i < otherLists.children.length; i++) {
+        list = otherLists.children[i];
+        for (j = 1; j < list.children.length; j++) {
+            list.children[j].addEventListener("dblclick", function (e) {
+                _onShowDescr(user, e.target);
+            });
+        }
     }
 }
 
@@ -348,6 +361,91 @@ function _onRemoveItem(user, itemDiv) {
     }
 }
 
+function _onShowDescr(user, target) {
+    var div = document.getElementById("item_descr");
+    if (div.children.length > 0) {
+        // An item description window is already showing
+        return;
+    }
+
+    var itemRow = null;
+    if (target.children.length > 1) {
+        itemRow = target.parentElement;
+    } else {
+        itemRow = target.parentElement.parentElement;
+    }
+
+    var owner = itemRow.parentElement.firstChild.firstChild.innerHTML;
+    var name = itemRow.firstChild.children[1].innerHTML;
+    var price = itemRow.firstChild.firstChild.innerHTML;
+    var descr = itemRow.lastChild.innerHTML;
+
+    var nameSpan = document.createElement("span");
+    nameSpan.appendChild(document.createTextNode(name));
+    nameSpan.setAttribute("style", "font-weight: bold;");
+
+    var priceSpan = document.createElement("span");
+    priceSpan.appendChild(document.createTextNode(" (" + price + ")"));
+    priceSpan.setAttribute("style", "font-weight: bold;");
+
+    var descrDiv = document.createElement("div");
+    descrDiv.appendChild(document.createTextNode(descr));
+    descrDiv.setAttribute("style", "height: 82%; text-align: left;");
+    if (user == owner) { descrDiv.setAttribute("contenteditable", ""); }
+
+    var closeBtn = document.createElement("button");
+    styleButton(closeBtn, "Close", "LightGray");
+    closeBtn.addEventListener("click", function () {
+        _onHideDescr(false);
+    });
+
+    div.appendChild(nameSpan);
+    div.appendChild(priceSpan);
+    div.appendChild(document.createElement("hr"));
+    div.appendChild(descrDiv);
+    div.appendChild(document.createElement("hr"));
+    div.appendChild(closeBtn);
+
+    if (user == owner) {
+        var saveBtn = document.createElement("button");
+        styleButton(saveBtn, "Save", "#69a0f3");
+        saveBtn.addEventListener("click", function () {
+            _onHideDescr(true);
+        });
+        div.appendChild(document.createTextNode(" "));
+        div.appendChild(saveBtn);
+    }
+
+    div.setAttribute("style",
+        "width: 40%;" +
+        "border: none;" +
+        "border-radius: .3rem;" +
+        "background-color: white;" +
+        "box-shadow: 10px 10px 5px #888888;" +
+        "font-size: 1rem;" +
+        "text-align: center;" +
+        "padding: 1em;" +
+        "margin: 1em;" +
+        "position: absolute;" +
+        "left: 30%;" +
+        "top: 30%;" +
+        "z-index: 10;"
+    );
+}
+
+function _onHideDescr(needsSave) {
+    var div = document.getElementById("item_descr");
+    if (needsSave) {
+        // TODO: Save the new description
+        var descr = div.getElementsByTagName("div")[0].innerHTML;
+        alert(descr);
+    }
+    div.innerHTML = "";
+    div.setAttribute("style",
+        "display: none;"
+    );
+}
+
 async function _onSave(_session, user, saveButton) {
     saveButton.innerHTML = "Saving...";
     saveButton.setAttribute("disabled", "disabled");
@@ -394,9 +492,9 @@ async function _onSave(_session, user, saveButton) {
     }
 
     if (sendUpdateToServer(_session, user, userItems, claimableItems)) {
-        styleSaveButton(saveButton, "Saved", "green")
+        styleButton(saveButton, "Saved", "green")
     } else {
-        styleSaveButton(saveButton, "Failed", "red")
+        styleButton(saveButton, "Failed", "red")
         await sleep(1000);
         if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
             + " If the problem persists, please contact the site maintainers using the Help link below.")) {
@@ -406,10 +504,10 @@ async function _onSave(_session, user, saveButton) {
 
     await sleep(1000);
     saveButton.removeAttribute("disabled");
-    styleSaveButton(saveButton, "Save", "#69a0f3")
+    styleButton(saveButton, "Save", "#69a0f3")
 }
 
-function styleSaveButton(saveButton, content, color) {
+function styleButton(saveButton, content, color) {
     saveButton.innerHTML = content;
     saveButton.setAttribute("style",
         "font-family: -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Segoe UI Symbol\";" +
