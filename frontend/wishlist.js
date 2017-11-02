@@ -210,6 +210,12 @@ function createListItem(user, item, isFirstItem) {
         }
     }
 
+    // Invisible description div
+    var descrDiv = document.createElement("div");
+    descrDiv.setAttribute("style", "display: none;");
+    descrDiv.innerHTML = item.descr;
+    itemData.appendChild(descrDiv);
+
     var itemRow = document.createElement("tr");
     itemRow.appendChild(itemData);
     return itemRow;
@@ -285,7 +291,7 @@ function setupWishlistListeners(session, user) {
             _onRemoveItem(user, e.target);
         });
         userList.children[i].addEventListener("dblclick", function (e) {
-            _onShowDescr(user, e.target);
+            _onShowDescr(session, user, e.target);
         });
     }
 
@@ -294,7 +300,7 @@ function setupWishlistListeners(session, user) {
         list = otherLists.children[i];
         for (j = 1; j < list.children.length; j++) {
             list.children[j].addEventListener("dblclick", function (e) {
-                _onShowDescr(user, e.target);
+                _onShowDescr(session, user, e.target);
             });
         }
     }
@@ -361,7 +367,7 @@ function _onRemoveItem(user, itemDiv) {
     }
 }
 
-function _onShowDescr(user, target) {
+function _onShowDescr(session, user, target) {
     var div = document.getElementById("item_descr");
     if (div.children.length > 0) {
         // An item description window is already showing
@@ -378,7 +384,8 @@ function _onShowDescr(user, target) {
     var owner = itemRow.parentElement.firstChild.firstChild.innerHTML;
     var name = itemRow.firstChild.children[1].innerHTML;
     var price = itemRow.firstChild.firstChild.innerHTML;
-    var descr = itemRow.lastChild.innerHTML;
+    var descr = itemRow.firstChild.lastChild.innerHTML;
+    descr = descr.replace(/\r?\n/g, "<br>");
 
     var nameSpan = document.createElement("span");
     nameSpan.appendChild(document.createTextNode(name));
@@ -389,14 +396,14 @@ function _onShowDescr(user, target) {
     priceSpan.setAttribute("style", "font-weight: bold;");
 
     var descrDiv = document.createElement("div");
-    descrDiv.appendChild(document.createTextNode(descr));
+    descrDiv.innerHTML = descr;
     descrDiv.setAttribute("style", "height: 82%; text-align: left;");
     if (user == owner) { descrDiv.setAttribute("contenteditable", ""); }
 
     var closeBtn = document.createElement("button");
     styleButton(closeBtn, "Close", "LightGray");
     closeBtn.addEventListener("click", function () {
-        _onHideDescr(false);
+        _onHideDescr(session, user, itemRow.firstChild.lastChild, false);
     });
 
     div.appendChild(nameSpan);
@@ -410,7 +417,7 @@ function _onShowDescr(user, target) {
         var saveBtn = document.createElement("button");
         styleButton(saveBtn, "Save", "#69a0f3");
         saveBtn.addEventListener("click", function () {
-            _onHideDescr(true);
+            _onHideDescr(session, user, itemRow.firstChild.lastChild, true);
         });
         div.appendChild(document.createTextNode(" "));
         div.appendChild(saveBtn);
@@ -433,12 +440,15 @@ function _onShowDescr(user, target) {
     );
 }
 
-function _onHideDescr(needsSave) {
+function _onHideDescr(session, user, descrDiv, needsSave) {
     var div = document.getElementById("item_descr");
     if (needsSave) {
-        // TODO: Save the new description
         var descr = div.getElementsByTagName("div")[0].innerHTML;
-        alert(descr);
+        descr = descr.replace(new RegExp("<div>", "g"), "")
+            .replace(new RegExp("</div>", "g"), "\n")
+            .replace(new RegExp("<br>", "g"), "\n");
+        descrDiv.innerHTML = descr;
+        _onSave(session, user, document.getElementById("save_button"));
     }
     div.innerHTML = "";
     div.setAttribute("style",
@@ -457,14 +467,19 @@ async function _onSave(_session, user, saveButton) {
     var userList = document.getElementById("lists").children[0];
     for (j = 1; j < userList.children.length - 1; j++) {
         var itemName = userList.children[j].firstChild.children[1].innerHTML;
+        itemName = itemName.replace(new RegExp("<div>", "g"), "")
+            .replace(new RegExp("</div>", "g"), "\n")
+            .replace(new RegExp("<br>", "g"), "\n");
         var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
+        var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
         userItems.push({
             name: itemName,
             session: _session,
             owner: user,
             claimer: "",
             price: itemPrice,
-            order: j - 1
+            order: j - 1,
+            descr: itemDescr
         });
     }
 
@@ -475,17 +490,19 @@ async function _onSave(_session, user, saveButton) {
         var listOwner = list.firstChild.firstChild.innerHTML;
         for (j = 1; j < list.children.length; j++) {
             var itemData = list.children[j].firstChild;
-            if (itemData.children.length == 3) {
+            if (itemData.children.length == 4) {
                 var checkbox = itemData.children[2];
                 var itemClaimer = (checkbox.checked) ? user : "";
                 var itemPrice = itemData.firstChild.innerHTML;
+                var itemDescr = itemData.lastChild.innerHTML;
                 claimableItems.push({
                     name: itemData.children[1].innerHTML,
                     session: _session,
                     owner: listOwner,
                     claimer: itemClaimer,
                     price: itemPrice,
-                    order: j - 1
+                    order: j - 1,
+                    descr: itemDescr
                 });
             }
         }
@@ -623,7 +640,8 @@ function getItemsFromServer(session, user) {
         var _owner = respItems[i].Owner;
         var _claimer = (_owner != user) ? respItems[i].Claimer : "";
         var _price = (respItems[i].Price != null) ? respItems[i].Price : "";
-        items.push({ name: _name, owner: _owner, claimer: _claimer, price: _price });
+        var _descr = respItems[i].Descr;
+        items.push({ name: _name, owner: _owner, claimer: _claimer, price: _price, descr: _descr });
     }
 
     return items;

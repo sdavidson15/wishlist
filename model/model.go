@@ -7,6 +7,7 @@ type Item struct {
 	Claimer string
 	Price   string
 	Order   int
+	Descr   string
 }
 
 type Items []Item
