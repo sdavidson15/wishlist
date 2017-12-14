@@ -8,6 +8,32 @@ td {
     padding: 0;
 }
 
+span {
+    font-weight: bold;
+}
+
+button {
+    font-family: -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Segoe UI Symbol\";
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.5;
+    background-color: #69a0f3;
+    border: none;
+    border-radius: .3rem;
+    color: white;
+    padding: 0.25em 1em 0.25em 1em
+}
+
+#home-banner {
+    font-family: \"Tangerine\", serif;
+    font-size: 7em;
+    color: snow;
+}
+
+#home-links-div {
+
+}
+
 #banner {
     width: 100%;
     text-align: center;
@@ -85,21 +111,30 @@ td {
     float: right;
 }
 
-#save_button {
-    font-family: -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Segoe UI Symbol\";
-    font-size: 1.25rem;
-    font-weight: 400;
-    line-height: 1.5;
-    background-color: #69a0f3;
-    border: none;
-    border-radius: .3rem;
-    color: white;
-    padding: 0.25em 1em 0.25em 1em
-}
-
 #links-div {
     width: 100%;
     margin: 0 auto;
     text-align: center;
     margin-bottom: 2em;
+}
+
+#description-div {
+    height: 82%; 
+    text-align: left;
+}
+
+#item-description {
+    width: 40%;
+    border: none;
+    border-radius: .3rem;
+    background-color: white;
+    box-shadow: 10px 10px 5px #888888;
+    font-size: 1rem;
+    text-align: center;
+    padding: 1em;
+   margin: 1em;
+    position: absolute;
+    left: 30%;
+    top: 30%;
+    z-index: 10;
 }

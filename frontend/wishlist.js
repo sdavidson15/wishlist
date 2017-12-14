@@ -1,32 +1,91 @@
-// TODO: Pull all the styling into a css file, and just apply classes where needed.
+var demo_session = 'OG Wish List'
 
-async function main() {
+function main() {
     var sessionCookie = cookieHandler.getSession(),
         userCookie = cookieHandler.getUser();
 
-    if (common.isBlankString(sessionCookie) || common.isBlankString(userCookie)) {
-        cookieHandler.clearCookies(); // Sanity check
-        // TODO: Render homepage
-    } else {
+    if (isBlankString(sessionCookie) || isBlankString(userCookie))
+        homepage.init();
+    else
         wishlistApp.init();
-        while (true) {
-            await common.sleep(120000); // Poll every 2 mins
-            wishlistApp.redrawWishList();
-        }
-    }
 }
 
+function isBlankString(str) {
+    return str == "" || str == "null"
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// homepage handles everything related to the homepage.
+var homepage = (function () {
+    var bannerText = 'Project Wish List',
+
+        init = function () {
+            cookieHandler.clearCookies();
+            render();
+        },
+
+        close = function () {
+            $('logged-out').hide();
+        },
+
+        render = function () {
+            $('logged-out').show();
+            $('home-banner').text(bannerText);
+            setupHomepageListeners();
+        },
+
+        _onSignIn = function () {
+            var session = document.getElementsByTagName("input")[0].value,
+                user = document.getElementsByTagName("input")[1].value,
+                password = (session == demo_session) ? document.getElementsByTagName("input")[2].value : "";
+
+            if (restApp.signIn(session, user, password)) {
+                cookieHandler.setSession(session);
+                cookieHandler.setUser(user);
+                close();
+                wishlistApp.init();
+            } else {
+                alert("The session, username, or password you entered are incorrect. Please try again.")
+            }
+        },
+
+        setupHomepageListeners = function () {
+            document.getElementById("sign-in-link").addEventListener("click", function (event) {
+                event.preventDefault();
+                _onSignIn();
+            });
+        }
+
+    return {
+        init: init
+    }
+}());
+
+// wishlistApp handles everything related to the Wishlist application (once logged in).
 var wishlistApp = (function () {
     var session = cookieHandler.getSession(),
         user = cookieHandler.getUser(),
         items = [],
         owners = [],
 
-        refreshOwners = function () {
-            owners = [];
-            for (var i = 0; i < items.length; i++) {
-                if (!owners.includes(item.owner)) owners.push(item.owner);
+        init = async function () {
+            $('logged-in').show();
+            redrawWishList();
+            while (true) {
+                await sleep(120000);
+                wishlistApp.redrawWishList();
             }
+        },
+
+        close = function () {
+            $('logged-out').hide();
+            session = null;
+            user = null;
+            items = null;
+            owners = null;
         },
 
         redrawWishList = async function () {
@@ -38,6 +97,13 @@ var wishlistApp = (function () {
             $('banner-text').text(session);
             populateLists();
             setupWishlistListeners();
+        },
+
+        refreshOwners = function () {
+            owners = [];
+            for (var i = 0; i < items.length; i++) {
+                if (!owners.includes(item.owner)) owners.push(item.owner);
+            }
         },
 
         populateLists = function () {
@@ -54,6 +120,7 @@ var wishlistApp = (function () {
                 $('list_' + items[i].owner).append(createItem(items[i]));
             }
 
+            // TODO: remove this to lock down wishlist
             // Add the "Add item..." cell
             $('list_' + user).append(createAddItem());
         },
@@ -132,16 +199,230 @@ var wishlistApp = (function () {
             return itemRow;
         },
 
-        init = async function () {
-            redrawWishList();
+        setupWishlistListeners = function (session, user) {
+            document.getElementById("add_item").addEventListener("click", function (event) {
+                event.preventDefault();
+                _onAddItem();
+            });
+            document.getElementById("signout_link").addEventListener("click", function () {
+                _onSignOut();
+            });
+            document.getElementById("save-button").addEventListener("click", function (e) {
+                _onSave(e.target);
+            });
+
+            // Add listeners to this user's items
+            var userList = document.getElementById("list_" + user);
+            for (i = 1; i < userList.children.length; i++) {
+                userList.children[i].addEventListener("contextmenu", function (e) {
+                    e.preventDefault();
+                    _onRemoveItem(e.target); // TODO: remove this to lock down wishlist
+                });
+                userList.children[i].addEventListener("dblclick", function (e) {
+                    _onShowDescr(e.target);
+                });
+            }
+
+            // Add listeners to the other user's items
+            var otherLists = document.getElementById("other_lists");
+            for (i = 0; i < otherLists.children.length; i++) {
+                list = otherLists.children[i];
+                for (j = 1; j < list.children.length; j++) {
+                    list.children[j].addEventListener("dblclick", function (e) {
+                        _onShowDescr(e.target);
+                    });
+                }
+            }
+        },
+
+        _onSignOut = function () {
+            close();
+            homepage.init();
+        },
+
+        // TODO: remove this to lock down wishlist
+        _onAddItem = function () {
+            var table = document.getElementById("list_" + user);
+            if (table.children.length >= 17) {
+                alert("No more than 15 items are allowed per list.");
+                return;
+            }
+
+            var newModelItem = { name: "", owner: user, claimer: "", price: "" };
+            items.push(newModelItem);
+            var newItem = createListItem(newModelItem);
+            newItem.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+                _onRemoveItem(e.target);
+            });
+            newItem.addEventListener("dblclick", function (e) {
+                _onShowDescr(e.target);
+            });
+            table.insertBefore(newItem, table.children[table.children.length - 1]);
+        },
+
+        // TODO: remove this to lock down wishlist
+        _onRemoveItem = function (itemDiv) {
+            var table = document.getElementById("list_" + user);
+            var itemRow = itemDiv.parentElement.parentElement;
+            var index = -1;
+            for (var i = 0; i < table.rows.length; i++) {
+                if (table.rows[i] == itemRow) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index == -1 || index == 1) {
+                return;
+            }
+
+            if (confirm("Delete item " + itemDiv.innerHTML + "?")) {
+                table.deleteRow(index);
+                // TODO: remove item from items
+                return;
+            }
+        },
+
+        _onShowDescr = function (target) {
+            var div = document.getElementById("item-descr");
+            if (div.children.length > 0) {
+                // An item description window is already showing
+                return;
+            }
+
+            var itemRow = null;
+            if (target.children.length > 1)
+                itemRow = target.parentElement;
+            else
+                itemRow = target.parentElement.parentElement;
+
+            // FIXME: get text, not inner html
+            var owner = itemRow.parentElement.firstChild.firstChild.innerHTML,
+                name = itemRow.firstChild.children[1].innerHTML,
+                price = itemRow.firstChild.firstChild.innerHTML,
+                descr = itemRow.firstChild.lastChild.innerHTML;
+            descr = descr.replace(/\r?\n/g, "<br>");
+
+            var nameSpan = $('<span />').text(name),
+                priceSpan = $('<span />').text(' (' + price + ')'),
+                descrDiv = $('<div />').text(descr).attr('id', 'description-div'),
+            if (user == owner) descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
+
+            var closeBtn = $('<button value="Close" />').css('background-color', 'LightGray');
+            closeBtn.addEventListener("click", function () {
+                _onHideDescr(itemRow.firstChild.lastChild, false);
+            });
+
+            div.appendChild(nameSpan);
+            div.appendChild(priceSpan);
+            div.appendChild(document.createElement("hr"));
+            div.appendChild(descrDiv);
+            div.appendChild(document.createElement("hr"));
+            div.appendChild(closeBtn);
+
+            if (user == owner) {
+                var saveBtn = $('<button value="Save" />');
+                saveBtn.addEventListener("click", function () {
+                    _onHideDescr(itemRow.firstChild.lastChild, true);
+                });
+                div.appendChild(document.createTextNode(" "));
+                div.appendChild(saveBtn);
+            }
+        },
+
+        _onHideDescr = function (descrDiv, needsSave) {
+            var div = document.getElementById("item-descr");
+            if (needsSave) {
+                // FIXME: get text not inner html
+                var descr = div.getElementsByTagName("div")[0].innerHTML;
+                descr = descr.replace(new RegExp("<div>", "g"), "")
+                    .replace(new RegExp("</div>", "g"), "\n")
+                    .replace(new RegExp("<br>", "g"), "\n");
+                descrDiv.innerHTML = descr;
+                _onSave(session, user, document.getElementById("save-button"));
+            }
+            div.innerHTML = "";
+            div.hide();
+        },
+
+        _onSave = async function (saveButton) {
+            saveButton.innerHTML = "Saving...";
+            saveButton.setAttribute("disabled", "disabled");
+
+            var userItems = [];
+            var claimableItems = [];
+
+            // Gather the update from this user
+            var userList = document.getElementById("lists").children[0];
+            for (j = 1; j < userList.children.length - 1; j++) {
+                // FIXME: get text, not inner html
+                var itemName = userList.children[j].firstChild.children[1].innerHTML;
+                itemName = itemName.replace(new RegExp("<div>", "g"), "")
+                    .replace(new RegExp("</div>", "g"), "\n")
+                    .replace(new RegExp("<br>", "g"), "\n");
+                var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
+                var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
+                userItems.push({
+                    name: itemName,
+                    session: session,
+                    owner: user,
+                    claimer: "",
+                    price: itemPrice,
+                    order: j - 1,
+                    descr: itemDescr
+                });
+            }
+
+            // Gather the update from the other users
+            var otherLists = document.getElementById("other-lists");
+            for (i = 0; i < otherLists.children.length; i++) {
+                var list = otherLists.children[i];
+                var listOwner = list.firstChild.firstChild.innerHTML;
+                for (j = 1; j < list.children.length; j++) {
+                    var itemData = list.children[j].firstChild;
+                    if (itemData.children.length == 4) {
+                        var checkbox = itemData.children[2];
+                        var itemClaimer = (checkbox.checked) ? user : "";
+                        var itemPrice = itemData.firstChild.innerHTML;
+                        var itemDescr = itemData.lastChild.innerHTML;
+                        claimableItems.push({
+                            name: itemData.children[1].innerHTML,
+                            session: session,
+                            owner: listOwner,
+                            claimer: itemClaimer,
+                            price: itemPrice,
+                            order: j - 1,
+                            descr: itemDescr
+                        });
+                    }
+                }
+            }
+
+            if (restApp.updateItems(session, user, userItems, claimableItems)) {
+                saveButton.innerHTML = "Saved";
+                saveButton.css('background-color', 'green');
+            } else {
+                saveButton.innerHTML = "Failed";
+                saveButton.css('background-color', 'red');
+                await sleep(1000);
+                if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
+                    + " If the problem persists, please contact the site maintainers using the Help link below.")) {
+                    location.reload();
+                }
+            }
+
+            await sleep(1000);
+            saveButton.removeAttribute("disabled");
+            saveButton.innerHTML = "Save";
+            saveButton.css('background-color', '#69a0f3');
         }
 
     return {
-        init: init,
-        redrawWishList: redrawWishList
+        init: init
     }
 }());
 
+// cookieHandler handes everthing related to storing, clearing, and retrieving browser cookies.
 var cookieHandler = (function () {
     var sessionKey = "wl_session",
         userKey = "wl_user",
@@ -197,337 +478,27 @@ var cookieHandler = (function () {
         getSession: getSession,
         getUser: getUser,
         setSession: setSession,
-        setUser, setUser
+        setUser: setUser
     }
 }());
 
-function renderHomepage() {
-    var cookieSession = cookieHandler.getSession();
-    var cookieUser = cookieHandler.getUser();
-    if (cookieSignIn(cookieSession, cookieUser)) {
-        window.location.href = "wishlist.html";
-    }
-    // FIXME: Make your own "createBanner" for rendering homepage banner
-    createBanner("Project Wish List",
-        "font-family: \"Tangerine\", serif;" +
-        "font-size: 7em;" +
-        "color: snow;"
-    );
-
-    setupHomepageListeners();
-}
-
-function setupHomepageListeners() {
-    document.getElementById("sign_in_link").addEventListener("click", function (event) {
-        event.preventDefault();
-        _onSignIn();
-    });
-}
-
-// TODO: Left off here
-function setupWishlistListeners(session, user) {
-    document.getElementById("add_item").addEventListener("click", function (event) {
-        event.preventDefault();
-        _onAddItem(user);
-    });
-    document.getElementById("signout_link").addEventListener("click", function () {
-        _onSignOut(true);
-    });
-    document.getElementById("save_button").addEventListener("click", function (e) {
-        _onSave(session, user, e.target);
-    });
-    var userList = document.getElementById("list_" + user);
-    for (i = 1; i < userList.children.length; i++) {
-        userList.children[i].addEventListener("contextmenu", function (e) {
-            e.preventDefault();
-            _onRemoveItem(user, e.target);
-        });
-        userList.children[i].addEventListener("dblclick", function (e) {
-            _onShowDescr(session, user, e.target);
-        });
-    }
-
-    var otherLists = document.getElementById("other_lists");
-    for (i = 0; i < otherLists.children.length; i++) {
-        list = otherLists.children[i];
-        for (j = 1; j < list.children.length; j++) {
-            list.children[j].addEventListener("dblclick", function (e) {
-                _onShowDescr(session, user, e.target);
-            });
-        }
-    }
-}
-
-function _onSignIn() {
-    state.session = document.getElementsByTagName("input")[0].value;
-    state.user = document.getElementsByTagName("input")[1].value;
-    state.password = (!isDemo()) ? document.getElementsByTagName("input")[2].value : "";
-
-    if (signIn()) {
-        setCookie("wl_session", _session, 5);
-        setCookie("wl_user", _user, 5);
-        window.location.href = "wishlist.html";
-        // FIXME: single page
-    } else {
-        alert("The session, username, or password you entered are incorrect. Please try again.")
-    }
-}
-
-function _onSignOut() {
-    user = null;
-    session = null;
-    clearCookies();
-}
-
-function _onAddItem(user) {
-    var table = document.getElementById("list_" + user);
-    if (table.children.length >= 17) {
-        alert("No more than 15 items are allowed per list.");
-        return;
-    }
-
-    var newItem = createListItem(user, { name: "", owner: user, claimer: "", price: "" }, false);
-    newItem.addEventListener("contextmenu", function (e) {
-        e.preventDefault();
-        _onRemoveItem(user, e.target);
-    });
-    table.insertBefore(newItem, table.children[table.children.length - 1]);
-}
-
-function _onRemoveItem(user, itemDiv) {
-    var table = document.getElementById("list_" + user);
-    var itemRow = itemDiv.parentElement.parentElement;
-    var index = -1;
-    for (var i = 0; i < table.rows.length; i++) {
-        if (table.rows[i] == itemRow) {
-            index = i;
-            break;
-        }
-    }
-    if (index == -1 || index == 1) {
-        return;
-    }
-
-    if (confirm("Delete item " + itemDiv.innerHTML + "?")) {
-        table.deleteRow(index);
-        return;
-    }
-}
-
-function _onShowDescr(session, user, target) {
-    var div = document.getElementById("item_descr");
-    if (div.children.length > 0) {
-        // An item description window is already showing
-        return;
-    }
-
-    var itemRow = null;
-    if (target.children.length > 1) {
-        itemRow = target.parentElement;
-    } else {
-        itemRow = target.parentElement.parentElement;
-    }
-
-    var owner = itemRow.parentElement.firstChild.firstChild.innerHTML;
-    var name = itemRow.firstChild.children[1].innerHTML;
-    var price = itemRow.firstChild.firstChild.innerHTML;
-    var descr = itemRow.firstChild.lastChild.innerHTML;
-    descr = descr.replace(/\r?\n/g, "<br>");
-
-    var nameSpan = document.createElement("span");
-    nameSpan.appendChild(document.createTextNode(name));
-    nameSpan.setAttribute("style", "font-weight: bold;");
-
-    var priceSpan = document.createElement("span");
-    priceSpan.appendChild(document.createTextNode(" (" + price + ")"));
-    priceSpan.setAttribute("style", "font-weight: bold;");
-
-    var descrDiv = document.createElement("div");
-    descrDiv.innerHTML = descr;
-    descrDiv.setAttribute("style", "height: 82%; text-align: left;");
-    if (user == owner) { descrDiv.setAttribute("contenteditable", ""); }
-
-    var closeBtn = document.createElement("button");
-    styleButton(closeBtn, "Close", "LightGray");
-    closeBtn.addEventListener("click", function () {
-        _onHideDescr(session, user, itemRow.firstChild.lastChild, false);
-    });
-
-    div.appendChild(nameSpan);
-    div.appendChild(priceSpan);
-    div.appendChild(document.createElement("hr"));
-    div.appendChild(descrDiv);
-    div.appendChild(document.createElement("hr"));
-    div.appendChild(closeBtn);
-
-    if (user == owner) {
-        var saveBtn = document.createElement("button");
-        styleButton(saveBtn, "Save", "#69a0f3");
-        saveBtn.addEventListener("click", function () {
-            _onHideDescr(session, user, itemRow.firstChild.lastChild, true);
-        });
-        div.appendChild(document.createTextNode(" "));
-        div.appendChild(saveBtn);
-    }
-
-    div.setAttribute("style",
-        "width: 40%;" +
-        "border: none;" +
-        "border-radius: .3rem;" +
-        "background-color: white;" +
-        "box-shadow: 10px 10px 5px #888888;" +
-        "font-size: 1rem;" +
-        "text-align: center;" +
-        "padding: 1em;" +
-        "margin: 1em;" +
-        "position: absolute;" +
-        "left: 30%;" +
-        "top: 30%;" +
-        "z-index: 10;"
-    );
-}
-
-function _onHideDescr(session, user, descrDiv, needsSave) {
-    var div = document.getElementById("item_descr");
-    if (needsSave) {
-        var descr = div.getElementsByTagName("div")[0].innerHTML;
-        descr = descr.replace(new RegExp("<div>", "g"), "")
-            .replace(new RegExp("</div>", "g"), "\n")
-            .replace(new RegExp("<br>", "g"), "\n");
-        descrDiv.innerHTML = descr;
-        _onSave(session, user, document.getElementById("save_button"));
-    }
-    div.innerHTML = "";
-    div.setAttribute("style",
-        "display: none;"
-    );
-}
-
-async function _onSave(_session, user, saveButton) {
-    saveButton.innerHTML = "Saving...";
-    saveButton.setAttribute("disabled", "disabled");
-
-    var userItems = [];
-    var claimableItems = [];
-
-    // Gather the update from this user
-    var userList = document.getElementById("lists").children[0];
-    for (j = 1; j < userList.children.length - 1; j++) {
-        var itemName = userList.children[j].firstChild.children[1].innerHTML;
-        itemName = itemName.replace(new RegExp("<div>", "g"), "")
-            .replace(new RegExp("</div>", "g"), "\n")
-            .replace(new RegExp("<br>", "g"), "\n");
-        var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
-        var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
-        userItems.push({
-            name: itemName,
-            session: _session,
-            owner: user,
-            claimer: "",
-            price: itemPrice,
-            order: j - 1,
-            descr: itemDescr
-        });
-    }
-
-    // Gather the update from the other users
-    var otherLists = document.getElementById("other_lists");
-    for (i = 0; i < otherLists.children.length; i++) {
-        var list = otherLists.children[i];
-        var listOwner = list.firstChild.firstChild.innerHTML;
-        for (j = 1; j < list.children.length; j++) {
-            var itemData = list.children[j].firstChild;
-            if (itemData.children.length == 4) {
-                var checkbox = itemData.children[2];
-                var itemClaimer = (checkbox.checked) ? user : "";
-                var itemPrice = itemData.firstChild.innerHTML;
-                var itemDescr = itemData.lastChild.innerHTML;
-                claimableItems.push({
-                    name: itemData.children[1].innerHTML,
-                    session: _session,
-                    owner: listOwner,
-                    claimer: itemClaimer,
-                    price: itemPrice,
-                    order: j - 1,
-                    descr: itemDescr
-                });
-            }
-        }
-    }
-
-    if (sendUpdateToServer(_session, user, userItems, claimableItems)) {
-        styleButton(saveButton, "Saved", "green")
-    } else {
-        styleButton(saveButton, "Failed", "red")
-        await sleep(1000);
-        if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
-            + " If the problem persists, please contact the site maintainers using the Help link below.")) {
-            location.reload();
-        }
-    }
-
-    await sleep(1000);
-    saveButton.removeAttribute("disabled");
-    styleButton(saveButton, "Save", "#69a0f3")
-}
-
-function styleButton(saveButton, content, color) {
-    saveButton.innerHTML = content;
-    saveButton.setAttribute("style",
-        "font-family: -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Segoe UI Symbol\";" +
-        "font-size: 1.25rem;" +
-        "font-weight: 400;" +
-        "line-height: 1.5;" +
-        "background-color: " + color + ";" +
-        "border: none;" +
-        "border-radius: .3rem;" +
-        "color: white;" +
-        "padding: 0.25em 1em 0.25em 1em"
-    );
-}
-
+// restApp handles all HTTP rest communication with the server.
 var restApp = (function () {
     var serverError = function () {
         alert("Something went wrong.");
         location.reload();
     },
 
-        signIn = function () {
-            if (common.isBlankString(state.session) || common.isBlankString(state.user)) return false;
+        signIn = function (session, user, password) {
+            if (isBlankString(session) || isBlankString(user)) return false;
 
             // FIXME: jquery
             var req = new XMLHttpRequest()
             req.open("PUT", "/signin", false)
             req.send(JSON.stringify({
-                sessionName: state.session,
-                username: state.user,
-                password: state.password
-            }));
-
-            switch (req.status) {
-                case 200:
-                    return true;
-                case 401:
-                    return false;
-                default:
-                    serverError();
-            }
-        },
-
-        // FIXME: deprecate. No need for this, just need to do server side auth checking on all requests.
-        cookieSignIn = function (session, user) {
-            console.log('Using deprecated cookieSignIn function');
-
-            if (session == "" || session == "null" ||
-                user == "" || user == "null") {
-                return false;
-            }
-
-            var req = new XMLHttpRequest()
-            req.open("PUT", "/csignin", false)
-            req.send(JSON.stringify({
                 sessionName: session,
-                username: user
+                username: user,
+                password: password
             }));
 
             switch (req.status) {
@@ -540,7 +511,7 @@ var restApp = (function () {
             }
         },
 
-        getItems = function () {
+        getItems = function (session, user) {
             var session = state.session.replace(" ", "%20");
 
             // FIXME: jquery. Also, status unauthorized.
@@ -564,7 +535,7 @@ var restApp = (function () {
             return items;
         },
 
-        sendUpdateToServer = function (_userItems, _otherItems) {
+        updateItems = function (session, user, userItems, otherItems) {
             var session = state.session.replace(" ", "%20");
 
             // FIXME: jquery. Also, status unauthorized.
@@ -572,8 +543,8 @@ var restApp = (function () {
             req.open("PUT", "/lists/" + session, false)
             req.send(JSON.stringify({
                 userName: state.user,
-                userItems: _userItems,
-                otherItems: _otherItems
+                userItems: userItems,
+                otherItems: otherItems
             }));
 
             switch (req.status) {
@@ -586,23 +557,7 @@ var restApp = (function () {
 
     return {
         signIn: signIn,
-        cookieSignIn: cookieSignIn,
         getItems: getItems,
         updateItems: updateItems
     }
-}())
-
-var common = (function () {
-    var isBlankString = function (str) {
-        return str == "" || str == "null"
-    },
-
-        sleep = function (ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-    return {
-        isBlankString: isBlankString,
-        sleep: sleep
-    }
-}())
+}());

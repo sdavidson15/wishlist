@@ -12,23 +12,62 @@
     <link rel="stylesheet" href="wishlist.css" />
 </head>
 
-<body onload="main">
-    <div id="container">
-        <div id="banner">
-            <h1 id="banner-text"></h1>
-        </div>
-        <div id="lists" class="jumbotron">
-            <div id="other-lists"></div>
-            <div id="save-div">
-                <button id="save_button" value="Save"></button>
+<body onload="main()">
+    <div id="logged-out">
+        <div class="container" id="snow">
+            <div id="home-banner"></div>
+
+            <div class="jumbotron" class="wb-main-jumbotron">
+                <div id="welcome_blurb">
+                    <h4>
+                        Welcome to Project Wish List!
+                    </h4>
+                    <br>
+                    <h4>
+                        Project Wish List is a simple, collaborative way for groups to organize all their wish lists in one place.
+                    </h4>
+                    <br>
+                    <h4>
+                        Group members can view each other's wish lists, claim items, and edit their own wish list. All while maintaining the secrecy
+                        of who has bought what.
+                    </h4>
+                    </h4>
+                </div>
+                <div id="sign-in-form">
+                    <p style="font-size: 1.5em;">Sign In</p>
+                    <input type="text" placeholder="Session name" />
+                    <hr>
+                    <input type="text" placeholder="Username" />
+                    <input type="password" placeholder="Password" />
+                    <a id="sign-in-link">
+                        <button id="sign-in-button">Continue</button>
+                    </a>
+                </div>
             </div>
         </div>
+        <div id="home-links-div">
+            <a id="help_link" href="http://en.wikipedia.org/wiki/Special:Randompage">Help</a>
+        </div>
     </div>
-    <div id="item_descr"></div>
-    <div id="links-div">
-        <a id="signout_link" href="index.html">Sign Out</a> |
-        <a id="help_link" href="http://en.wikipedia.org/wiki/Special:Randompage">Help</a>
+    <div id="logged-in">
+        <div id="container">
+            <div id="banner">
+                <h1 id="banner-text"></h1>
+            </div>
+            <div id="lists" class="jumbotron">
+                <div id="other-lists"></div>
+                <div id="save-div">
+                    <button id="save-button" value="Save"></button>
+                </div>
+            </div>
+        </div>
+        <div id="item-descr"></div>
+        <div id="links-div">
+            <a id="signout_link" href="index.html">Sign Out</a> |
+            <a id="help_link" href="http://en.wikipedia.org/wiki/Special:Randompage">Help</a>
+        </div>
     </div>
+
 
     <script type="text/javascript" src="wishlist.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
