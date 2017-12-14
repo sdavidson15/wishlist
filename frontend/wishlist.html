@@ -12,16 +12,24 @@
     <link rel="stylesheet" href="wishlist.css" />
 </head>
 
-<body onload="runWishList()">
+<body onload="main">
     <div id="container">
-        <div id="banner"></div>
-        <div id="lists" class="jumbotron"></div>
+        <div id="banner">
+            <h1 id="banner-text"></h1>
+        </div>
+        <div id="lists" class="jumbotron">
+            <div id="other-lists"></div>
+            <div id="save-div">
+                <button id="save_button" value="Save"></button>
+            </div>
+        </div>
     </div>
     <div id="item_descr"></div>
-    <div id="links_div">
+    <div id="links-div">
         <a id="signout_link" href="index.html">Sign Out</a> |
         <a id="help_link" href="http://en.wikipedia.org/wiki/Special:Randompage">Help</a>
     </div>
+
     <script type="text/javascript" src="wishlist.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
         crossorigin="anonymous"></script>

@@ -1,269 +1,220 @@
 // TODO: Pull all the styling into a css file, and just apply classes where needed.
 
+async function main() {
+    var sessionCookie = cookieHandler.getSession(),
+        userCookie = cookieHandler.getUser();
+
+    if (common.isBlankString(sessionCookie) || common.isBlankString(userCookie)) {
+        cookieHandler.clearCookies(); // Sanity check
+        // TODO: Render homepage
+    } else {
+        wishlistApp.init();
+        while (true) {
+            await common.sleep(120000); // Poll every 2 mins
+            wishlistApp.redrawWishList();
+        }
+    }
+}
+
+var wishlistApp = (function () {
+    var session = cookieHandler.getSession(),
+        user = cookieHandler.getUser(),
+        items = [],
+        owners = [],
+
+        refreshOwners = function () {
+            owners = [];
+            for (var i = 0; i < items.length; i++) {
+                if (!owners.includes(item.owner)) owners.push(item.owner);
+            }
+        },
+
+        redrawWishList = async function () {
+            items = await restApp.getItems(session, user);
+            refreshOwners();
+
+            var oldSaveDiv = $('save-div');
+            $('lists').empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
+            $('banner-text').text(session);
+            populateLists();
+            setupWishlistListeners();
+        },
+
+        populateLists = function () {
+            // Create the tables
+            for (var i = 0; i < owners.length; i++) {
+                if (owners[i] == user)
+                    $('lists').prepend(createList(user));
+                else
+                    $('other-lists').append(createList(owners[i]));
+            }
+
+            // Create the items
+            for (i = 0; i < items.length; i++) {
+                $('list_' + items[i].owner).append(createItem(items[i]));
+            }
+
+            // Add the "Add item..." cell
+            $('list_' + user).append(createAddItem());
+        },
+
+        createList = function (owner) {
+            var table = document.createElement("table");
+            table.setAttribute("id", "list_" + owner);
+            table.setAttribute("class", "table table-bordered");
+
+            var header = document.createElement("th");
+            header.appendChild(document.createTextNode(owner));
+            var row = document.createElement("tr");
+            row.appendChild(header);
+            table.appendChild(row);
+
+            return table;
+        },
+
+        createItem = function (item) {
+            // FIXME: No half measures. Go all jquery on this.
+
+            // Table data container
+            var itemData = document.createElement("td");
+
+            // Price box
+            var priceDiv = $('<div />').addClass('wl-price-box').text(item.price);
+            if (user == item.owner) priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
+            itemData.appendChild(priceDiv);
+
+            // Content div
+            var contentDiv = $('<div />').addClass('wl-item-content').text(item.name);
+            var contentDivWidth = 8;
+            if (user == item.owner) {
+                contentDiv.setAttribute("contenteditable", "") // TODO: remove this to lock wishlists down
+                contentDivWidth = 10;
+            } else if (item.claimer != "" && item.claimer != user) {
+                contentDivWidth = 10.8;
+            }
+            contentDiv.width(contentDivWidth + 'em');
+            itemData.appendChild(contentDiv);
+
+            // Checkbox
+            if (item.claimer == "" && user != item.owner || item.claimer == user) {
+                var checkBox = $('<input />').addClass('wl-checkbox');
+                checkBox.setAttribute("type", "checkbox");
+                if (item.claimer == user) {
+                    checkBox.setAttribute("checked", "");
+                }
+                itemData.appendChild(checkBox);
+            }
+
+            // Invisible description div
+            var descrDiv = $('<div />').text(item.descr).hide();
+            itemData.appendChild(descrDiv);
+
+            // FIXME: jquery
+            var itemRow = document.createElement("tr");
+            itemRow.appendChild(itemData);
+            return itemRow;
+        },
+
+        createAddItem = function () {
+            // TODO: jquery
+            var itemData = document.createElement("td");
+            itemData.setAttribute("style", "background-color: LightGray;");
+
+            var addItemLink = document.createElement("a");
+            addItemLink.setAttribute("id", "add_item");
+            addItemLink.setAttribute("href", "#");
+            addItemLink.setAttribute("style", "color: black;");
+            addItemLink.appendChild(document.createTextNode("Add item..."));
+            itemData.appendChild(addItemLink);
+
+            var itemRow = document.createElement("tr");
+            itemRow.appendChild(itemData);
+            return itemRow;
+        },
+
+        init = async function () {
+            redrawWishList();
+        }
+
+    return {
+        init: init,
+        redrawWishList: redrawWishList
+    }
+}());
+
+var cookieHandler = (function () {
+    var sessionKey = "wl_session",
+        userKey = "wl_user",
+        cookieDuration = 5,
+
+        clearCookies = function () {
+            setCookie("wl_user", null);
+            setCookie("wl_session", null);
+        },
+
+        getSession = function () {
+            var session = getCookie(sessionKey);
+            return (session == null) ? "" : user;
+        },
+
+        getUser = function () {
+            var user = getCookie(userKey);
+            return (user == null) ? "" : user;
+        },
+
+        setSession = function (newSession) {
+            setCookie(sessionKey, newSession, cookieDuration);
+        },
+
+        setUser = function (newUser) {
+            setCookie(userKey, newUser, cookieDuration);
+        },
+
+        getCookie = function (cookieName) {
+            var name = cookieName + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        },
+
+        setCookie = function (name, val, duration) {
+            var d = new Date();
+            d.setTime(d.getTime() + (duration * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + val + ";" + expires + ";path=/";
+        }
+
+    return {
+        clearCookies: clearCookies,
+        getSession: getSession,
+        getUser: getUser,
+        setSession: setSession,
+        setUser, setUser
+    }
+}());
+
 function renderHomepage() {
-    var cookieSession = (getCookie("wl_session") == null) ? "" : getCookie("wl_session");
-    var cookieUser = (getCookie("wl_user") == null) ? "" : getCookie("wl_user");
+    var cookieSession = cookieHandler.getSession();
+    var cookieUser = cookieHandler.getUser();
     if (cookieSignIn(cookieSession, cookieUser)) {
         window.location.href = "wishlist.html";
     }
+    // FIXME: Make your own "createBanner" for rendering homepage banner
     createBanner("Project Wish List",
         "font-family: \"Tangerine\", serif;" +
         "font-size: 7em;" +
         "color: snow;"
     );
-    styleLinks();
 
     setupHomepageListeners();
-}
-
-async function runWishList() {
-    redrawWishList(true);
-    while (true) {
-        await sleep(120000); // Poll every 2 mins
-        redrawWishList(false);
-    }
-}
-
-async function redrawWishList(mustSignIn) {
-    var session = (getCookie("wl_session") == null) ? "" : getCookie("wl_session");
-    var user = (getCookie("wl_user") == null) ? "" : getCookie("wl_user");
-    if (mustSignIn) {
-        if (!cookieSignIn(session, user)) {
-            clearCookies();
-            window.location.href = "index.html";
-        }
-    }
-
-    var items = await getItemsFromServer(session, user);
-
-    document.getElementById("lists").innerHTML = "";
-    document.getElementById("banner").innerHTML = "";
-    renderWishList(session, user, items);
-}
-
-function renderWishList(session, user, items) {
-    createBanner(session,
-        "font-family: \"Tangerine\", serif;" +
-        "font-size: 5em;" +
-        "font-weight: bold;"
-    );
-    populateListsDiv(user, items);
-    addSaveButton();
-    styleLinks();
-
-    setupWishlistListeners(session, user);
-}
-
-function createBanner(session, headerStyle) {
-    var header = document.createElement("h1");
-    header.setAttribute("style", headerStyle);
-    header.appendChild(document.createTextNode(session));
-    var banner = document.getElementById("banner");
-    banner.setAttribute("style",
-        "width: 100%;" +
-        "text-align: center;" +
-        "margin-top: 3em;"
-    );
-    banner.appendChild(header);
-}
-
-function populateListsDiv(user, items) {
-    // Prepare the lists
-    var listsDiv = document.getElementById("lists");
-    var otherListsDiv = document.createElement("div");
-    otherListsDiv.setAttribute("id", "other_lists");
-    otherListsDiv.setAttribute("style",
-        "overflow: auto;" +
-        "white-space: nowrap;" +
-        "width: 82%;" +
-        "padding-bottom: 1em;" +
-        "margin: -0.05em 0em 0em 0.3em;" +
-        "float: left;"
-    );
-    listsDiv.appendChild(otherListsDiv);
-
-    // Create the items
-    var owners = [];
-    for (i = 0; i < items.length; i++) {
-        var item = items[i];
-        var currentListsDiv = (item.owner == user) ? listsDiv : otherListsDiv;
-        if (!owners.includes(item.owner)) {
-            var list = createList(user, item.owner);
-            var listItem = createListItem(user, item, true);
-            list.appendChild(listItem);
-            owners.push(item.owner);
-            currentListsDiv.appendChild(list);
-        } else {
-            var list = document.getElementById("list_" + item.owner);
-            var listItem = createListItem(user, item, false);
-            list.appendChild(listItem);
-        }
-    }
-
-    // Add the "Add item..." cell
-    var addItem = createAddItem();
-    document.getElementById("list_" + user).appendChild(addItem);
-
-    // Style the lists' container
-    listsDiv.appendChild(otherListsDiv);
-    listsDiv.setAttribute("style",
-        "width: 97%;" +
-        "margin: auto;" +
-        "margin-top: 2em;" +
-        "margin-bottom: 2em;" +
-        "padding: 1em;" +
-        "overflow: auto;"
-    );
-}
-
-function createList(user, owner) {
-    var table = document.createElement("table");
-    table.setAttribute("id", "list_" + owner);
-    table.setAttribute("class", "table table-bordered");
-
-    if (user != owner) {
-        table.setAttribute("style",
-            "width: 22%;" +
-            "vertical-align: top;" +
-            "margin: 0;" +
-            "padding: 0;" +
-            "display: inline-block;"
-        );
-    } else {
-        table.setAttribute("style",
-            "width: 17%;" +
-            "vertical-align: top;" +
-            "margin: 0;" +
-            "padding: 0;" +
-            "float: left;"
-        );
-    }
-
-
-    var header = document.createElement("th");
-    header.setAttribute("style", "background-color: snow;");
-    header.appendChild(document.createTextNode(owner));
-    var row = document.createElement("tr");
-    row.appendChild(header);
-    table.appendChild(row);
-
-    return table;
-}
-
-function createListItem(user, item, isFirstItem) {
-    // Table data container
-    var itemData = document.createElement("td");
-    var cellColor = (isFirstItem) ? "#69a0f3" : "snow";
-    itemData.setAttribute("style",
-        "background-color: " + cellColor + ";" +
-        "height: 3em;" +
-        "padding: 0;"
-    );
-
-    // Price box
-    var priceDiv = document.createElement("div");
-    priceDiv.setAttribute("style",
-        "background-color: LightGreen;" +
-        "height: 3em;" +
-        "width: 3em;" +
-        "float: left;" +
-        "line-height: 3em;" +
-        "text-align: center;" +
-        "overflow: hidden;" +
-        "white-space: nowrap;"
-    );
-    if (user == item.owner) { priceDiv.setAttribute("contenteditable", "") }
-    priceDiv.innerHTML = item.price;
-    itemData.appendChild(priceDiv);
-
-    // Content div
-    var contentDiv = document.createElement("div");
-    itemData.appendChild(contentDiv);
-    var contentDivWidth = 8;
-    if (user == item.owner) {
-        contentDiv.setAttribute("contenteditable", "")
-        contentDivWidth = 10;
-    } else if (item.claimer != "" && item.claimer != user) {
-        contentDivWidth = 10.8;
-    }
-    contentDiv.setAttribute("style",
-        "width: " + contentDivWidth + "em;" +
-        "float:left;" +
-        "line-height: 3em;" +
-        "padding-left: 1em;" +
-        "overflow: hidden;" +
-        "white-space: nowrap;"
-    );
-    contentDiv.appendChild(document.createTextNode(item.name));
-
-    // Checkbox
-    if (item.claimer == "" && user != item.owner || item.claimer == user) {
-        var checkBox = document.createElement("input");
-        checkBox.setAttribute("type", "checkbox");
-        checkBox.setAttribute("style",
-            "float: right;" +
-            "margin: 1em 1em 0em 1em;"
-        );
-        itemData.appendChild(checkBox);
-        if (item.claimer == user) {
-            checkBox.setAttribute("checked", "");
-        }
-    }
-
-    // Invisible description div
-    var descrDiv = document.createElement("div");
-    descrDiv.setAttribute("style", "display: none;");
-    descrDiv.innerHTML = item.descr;
-    itemData.appendChild(descrDiv);
-
-    var itemRow = document.createElement("tr");
-    itemRow.appendChild(itemData);
-    return itemRow;
-}
-
-function createAddItem() {
-    var itemData = document.createElement("td");
-    itemData.setAttribute("style", "background-color: LightGray;");
-
-    var addItemLink = document.createElement("a");
-    addItemLink.setAttribute("id", "add_item");
-    addItemLink.setAttribute("href", "#");
-    addItemLink.setAttribute("style", "color: black;");
-    addItemLink.appendChild(document.createTextNode("Add item..."));
-    itemData.appendChild(addItemLink);
-
-    var itemRow = document.createElement("tr");
-    itemRow.appendChild(itemData);
-    return itemRow;
-}
-
-function addSaveButton() {
-    var listsDiv = document.getElementById("lists");
-
-    var saveDiv = document.createElement("div");
-    saveDiv.setAttribute("style",
-        "width: 100%;" +
-        "margin-top: 2em;" +
-        "text-align: right;" +
-        "float: right;"
-    );
-
-    var saveButton = document.createElement("button");
-    saveButton.setAttribute("id", "save_button");
-    saveButton.appendChild(document.createTextNode("Save"));
-    styleButton(saveButton, "Save", "#69a0f3")
-
-    saveDiv.appendChild(saveButton);
-    listsDiv.appendChild(saveDiv);
-}
-
-function styleLinks() {
-    document.getElementById("links_div").setAttribute("style",
-        "width: 100%;" +
-        "margin: 0 auto;" +
-        "text-align: center;" +
-        "margin-bottom: 2em;"
-    );
 }
 
 function setupHomepageListeners() {
@@ -273,6 +224,7 @@ function setupHomepageListeners() {
     });
 }
 
+// TODO: Left off here
 function setupWishlistListeners(session, user) {
     document.getElementById("add_item").addEventListener("click", function (event) {
         event.preventDefault();
@@ -306,23 +258,18 @@ function setupWishlistListeners(session, user) {
     }
 }
 
-function _keySignIn(e) {
-    if (e.keyCode == 13) {
-        _onSignIn();
-    }
-}
-
 function _onSignIn() {
-    var _session = document.getElementsByTagName("input")[0].value;
-    var _user = document.getElementsByTagName("input")[1].value;
-    var password = document.getElementsByTagName("input")[2].value;
+    state.session = document.getElementsByTagName("input")[0].value;
+    state.user = document.getElementsByTagName("input")[1].value;
+    state.password = (!isDemo()) ? document.getElementsByTagName("input")[2].value : "";
 
-    if (signIn(_session, _user, password)) {
+    if (signIn()) {
         setCookie("wl_session", _session, 5);
         setCookie("wl_user", _user, 5);
         window.location.href = "wishlist.html";
+        // FIXME: single page
     } else {
-        alert("The session, username, or password you entered is incorrect. Please try again.")
+        alert("The session, username, or password you entered are incorrect. Please try again.")
     }
 }
 
@@ -539,134 +486,123 @@ function styleButton(saveButton, content, color) {
     );
 }
 
-function getCookie(cookieName) {
-    var name = cookieName + "=";
-    var ca = document.cookie.split(';');
-    for (var i = 0; i < ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1);
+var restApp = (function () {
+    var serverError = function () {
+        alert("Something went wrong.");
+        location.reload();
+    },
+
+        signIn = function () {
+            if (common.isBlankString(state.session) || common.isBlankString(state.user)) return false;
+
+            // FIXME: jquery
+            var req = new XMLHttpRequest()
+            req.open("PUT", "/signin", false)
+            req.send(JSON.stringify({
+                sessionName: state.session,
+                username: state.user,
+                password: state.password
+            }));
+
+            switch (req.status) {
+                case 200:
+                    return true;
+                case 401:
+                    return false;
+                default:
+                    serverError();
+            }
+        },
+
+        // FIXME: deprecate. No need for this, just need to do server side auth checking on all requests.
+        cookieSignIn = function (session, user) {
+            console.log('Using deprecated cookieSignIn function');
+
+            if (session == "" || session == "null" ||
+                user == "" || user == "null") {
+                return false;
+            }
+
+            var req = new XMLHttpRequest()
+            req.open("PUT", "/csignin", false)
+            req.send(JSON.stringify({
+                sessionName: session,
+                username: user
+            }));
+
+            switch (req.status) {
+                case 200:
+                    return true;
+                case 401:
+                    return false;
+                default:
+                    serverError();
+            }
+        },
+
+        getItems = function () {
+            var session = state.session.replace(" ", "%20");
+
+            // FIXME: jquery. Also, status unauthorized.
+            var req = new XMLHttpRequest()
+            req.open("GET", "/lists/" + session, false)
+            req.send();
+
+            var respItems = JSON.parse(req.responseText),
+                items = [];
+
+            for (i = 0; i < respItems.length; i++) {
+                items.push({
+                    name: respItems[i].Name,
+                    owner: respItems[i].Owner,
+                    claimer: (_owner != state.user) ? respItems[i].Claimer : "",
+                    price: (respItems[i].Price != null) ? respItems[i].Price : "",
+                    descr: respItems[i].Descr
+                });
+            }
+
+            return items;
+        },
+
+        sendUpdateToServer = function (_userItems, _otherItems) {
+            var session = state.session.replace(" ", "%20");
+
+            // FIXME: jquery. Also, status unauthorized.
+            var req = new XMLHttpRequest()
+            req.open("PUT", "/lists/" + session, false)
+            req.send(JSON.stringify({
+                userName: state.user,
+                userItems: _userItems,
+                otherItems: _otherItems
+            }));
+
+            switch (req.status) {
+                case 200:
+                    return true;
+                default:
+                    return false;
+            }
         }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
+
+    return {
+        signIn: signIn,
+        cookieSignIn: cookieSignIn,
+        getItems: getItems,
+        updateItems: updateItems
+    }
+}())
+
+var common = (function () {
+    var isBlankString = function (str) {
+        return str == "" || str == "null"
+    },
+
+        sleep = function (ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
+
+    return {
+        isBlankString: isBlankString,
+        sleep: sleep
     }
-    return "";
-}
-
-function setCookie(name, val, duration) {
-    var d = new Date();
-    d.setTime(d.getTime() + (duration * 24 * 60 * 60 * 1000));
-    var expires = "expires=" + d.toUTCString();
-    document.cookie = name + "=" + val + ";" + expires + ";path=/";
-}
-
-function clearCookies() {
-    setCookie("wl_user", null);
-    setCookie("wl_session", null);
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/** ----------------------------------------------------------  Server Connection  ---------------------------------------------------------- */
-
-
-function signIn(session, user, password) {
-    if (session == "" || session == "null" ||
-        user == "" || user == "null") {
-        return false;
-    }
-
-    if (session == "OG Wish List") {
-        // Make passwords irrelevant for the demo session
-        password = "";
-    }
-
-    var req = new XMLHttpRequest()
-    req.open("PUT", "/signin", false)
-    req.send(JSON.stringify({
-        sessionName: session,
-        username: user,
-        password: password
-    }));
-
-    switch (req.status) {
-        case 200:
-            return true;
-        case 401:
-            return false;
-        default:
-            serverError();
-    }
-}
-
-function cookieSignIn(session, user) {
-    if (session == "" || session == "null" ||
-        user == "" || user == "null") {
-        return false;
-    }
-
-    var req = new XMLHttpRequest()
-    req.open("PUT", "/csignin", false)
-    req.send(JSON.stringify({
-        sessionName: session,
-        username: user
-    }));
-
-    switch (req.status) {
-        case 200:
-            return true;
-        case 401:
-            return false;
-        default:
-            serverError();
-    }
-}
-
-function getItemsFromServer(session, user) {
-    session.replace(" ", "%20");
-
-    var req = new XMLHttpRequest()
-    req.open("GET", "/lists/" + session, false)
-    req.send();
-
-    var respItems = JSON.parse(req.responseText);
-
-    var items = [];
-    for (i = 0; i < respItems.length; i++) {
-        var _name = respItems[i].Name;
-        var _owner = respItems[i].Owner;
-        var _claimer = (_owner != user) ? respItems[i].Claimer : "";
-        var _price = (respItems[i].Price != null) ? respItems[i].Price : "";
-        var _descr = respItems[i].Descr;
-        items.push({ name: _name, owner: _owner, claimer: _claimer, price: _price, descr: _descr });
-    }
-
-    return items;
-}
-
-function sendUpdateToServer(session, user, _userItems, _otherItems) {
-    session.replace(" ", "%20");
-
-    var req = new XMLHttpRequest()
-    req.open("PUT", "/lists/" + session, false)
-    req.send(JSON.stringify({
-        userName: user,
-        userItems: _userItems,
-        otherItems: _otherItems
-    }));
-
-    switch (req.status) {
-        case 200:
-            return true;
-        default:
-            return false;
-    }
-}
-
-function serverError() {
-    alert("Something went wrong.");
-    location.reload();
-}
+}())
