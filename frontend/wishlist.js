@@ -1,5 +1,11 @@
 var demo_session = 'OG Wish List'
 
+var state = {
+    session: null,
+    user: null,
+    socketConnected: false
+}
+
 function main() {
     var sessionCookie = cookieHandler.getSession(),
         userCookie = cookieHandler.getUser();
@@ -38,16 +44,19 @@ var homepage = (function () {
         },
 
         _onSignIn = function () {
-            var session = document.getElementsByTagName("input")[0].value,
-                user = document.getElementsByTagName("input")[1].value,
-                password = (session == demo_session) ? document.getElementsByTagName("input")[2].value : "";
+            state.session = document.getElementsByTagName("input")[0].value;
+            state.user = document.getElementsByTagName("input")[1].value;
 
-            if (restApp.signIn(session, user, password)) {
-                cookieHandler.setSession(session);
-                cookieHandler.setUser(user);
+            var password = (state.session == demo_session) ? document.getElementsByTagName("input")[2].value : "";
+
+            if (restApp.signIn(password)) {
+                cookieHandler.setSession(state.session);
+                cookieHandler.setUser(state.user);
                 close();
                 wishlistApp.init();
             } else {
+                state.session = null;
+                state.user = null;
                 alert("The session, username, or password you entered are incorrect. Please try again.")
             }
         },
@@ -66,35 +75,52 @@ var homepage = (function () {
 
 // wishlistApp handles everything related to the Wishlist application (once logged in).
 var wishlistApp = (function () {
-    var session = cookieHandler.getSession(),
-        user = cookieHandler.getUser(),
-        items = [],
+    var items = [],
         owners = [],
 
         init = async function () {
-            $('logged-in').show();
-            redrawWishList();
-            while (true) {
-                await sleep(120000);
-                wishlistApp.redrawWishList();
+            state.session = cookieHandler.getSession();
+            state.user = cookieHandler.getUser();
+
+            websocketApp.init();
+
+            // Give the web socket 20 seconds to connect
+            for (var retry = 20; retry > 0; retry--) {
+                if (state.socketConnected) {
+                    break;
+                }
+
+                await sleep(1000);
+            }
+
+            if (!state.socketConnected) {
+                alert("Web socket failed to connect.");
+                close();
+                homepage.init();
+            } else {
+                $('logged-in').show();
+                redrawWishList();
             }
         },
 
         close = function () {
+            websocketApp.close();
             $('logged-out').hide();
-            session = null;
-            user = null;
+            state.session = null;
+            state.user = null;
             items = null;
             owners = null;
         },
 
+        // TODO: refreshOtherLists
+
         redrawWishList = async function () {
-            items = await restApp.getItems(session, user);
+            items = await restApp.getItems();
             refreshOwners();
 
             var oldSaveDiv = $('save-div');
             $('lists').empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
-            $('banner-text').text(session);
+            $('banner-text').text(state.session);
             populateLists();
             setupWishlistListeners();
         },
@@ -109,8 +135,8 @@ var wishlistApp = (function () {
         populateLists = function () {
             // Create the tables
             for (var i = 0; i < owners.length; i++) {
-                if (owners[i] == user)
-                    $('lists').prepend(createList(user));
+                if (owners[i] == state.user)
+                    $('lists').prepend(createList(state.user));
                 else
                     $('other-lists').append(createList(owners[i]));
             }
@@ -122,7 +148,7 @@ var wishlistApp = (function () {
 
             // TODO: remove this to lock down wishlist
             // Add the "Add item..." cell
-            $('list_' + user).append(createAddItem());
+            $('list_' + state.user).append(createAddItem());
         },
 
         createList = function (owner) {
@@ -147,26 +173,26 @@ var wishlistApp = (function () {
 
             // Price box
             var priceDiv = $('<div />').addClass('wl-price-box').text(item.price);
-            if (user == item.owner) priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
+            if (state.user == item.owner) priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
             itemData.appendChild(priceDiv);
 
             // Content div
             var contentDiv = $('<div />').addClass('wl-item-content').text(item.name);
             var contentDivWidth = 8;
-            if (user == item.owner) {
+            if (state.user == item.owner) {
                 contentDiv.setAttribute("contenteditable", "") // TODO: remove this to lock wishlists down
                 contentDivWidth = 10;
-            } else if (item.claimer != "" && item.claimer != user) {
+            } else if (item.claimer != "" && item.claimer != state.user) {
                 contentDivWidth = 10.8;
             }
             contentDiv.width(contentDivWidth + 'em');
             itemData.appendChild(contentDiv);
 
             // Checkbox
-            if (item.claimer == "" && user != item.owner || item.claimer == user) {
+            if (item.claimer == "" && state.user != item.owner || item.claimer == state.user) {
                 var checkBox = $('<input />').addClass('wl-checkbox');
                 checkBox.setAttribute("type", "checkbox");
-                if (item.claimer == user) {
+                if (item.claimer == state.user) {
                     checkBox.setAttribute("checked", "");
                 }
                 itemData.appendChild(checkBox);
@@ -199,7 +225,50 @@ var wishlistApp = (function () {
             return itemRow;
         },
 
-        setupWishlistListeners = function (session, user) {
+        saveSucceeded = async function () {
+            setSaveSuccess();
+            await sleep(1000);
+            setSaveDefault();
+        },
+
+        saveFailed = async function () {
+            setSaveFail();
+            await sleep(1000);
+            if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
+                + " If the problem persists, please contact the site maintainers using the Help link below.")) {
+                location.reload();
+            }
+        },
+
+        setSaveDefault = function () {
+            var saveButton = document.getElementById("save-button");
+            saveButton.removeAttribute("disabled");
+            saveButton.innerHTML = "Save";
+            saveButton.css('background-color', '#69a0f3');
+        },
+
+        setSaveInProgress = function () {
+            var saveButton = document.getElementById("save-button");
+            saveButton.setAttribute("disabled", "disabled");
+            saveButton.innerHTML = "Saving...";
+            saveButton.css('background-color', '#69a0f3');
+        },
+
+        setSaveSuccess = function () {
+            var saveButton = document.getElementById("save-button");
+            saveButton.setAttribute("disabled", "disabled");
+            saveButton.innerHTML = "Saved";
+            saveButton.css('background-color', 'green');
+        },
+
+        setSaveFail = function () {
+            var saveButton = document.getElementById("save-button");
+            saveButton.setAttribute("disabled", "disabled");
+            saveButton.innerHTML = "Failed";
+            saveButton.css('background-color', 'red');
+        },
+
+        setupWishlistListeners = function () {
             document.getElementById("add_item").addEventListener("click", function (event) {
                 event.preventDefault();
                 _onAddItem();
@@ -212,7 +281,7 @@ var wishlistApp = (function () {
             });
 
             // Add listeners to this user's items
-            var userList = document.getElementById("list_" + user);
+            var userList = document.getElementById("list_" + state.user);
             for (i = 1; i < userList.children.length; i++) {
                 userList.children[i].addEventListener("contextmenu", function (e) {
                     e.preventDefault();
@@ -242,13 +311,13 @@ var wishlistApp = (function () {
 
         // TODO: remove this to lock down wishlist
         _onAddItem = function () {
-            var table = document.getElementById("list_" + user);
+            var table = document.getElementById("list_" + state.user);
             if (table.children.length >= 17) {
                 alert("No more than 15 items are allowed per list.");
                 return;
             }
 
-            var newModelItem = { name: "", owner: user, claimer: "", price: "" };
+            var newModelItem = { name: "", owner: state.user, claimer: "", price: "" };
             items.push(newModelItem);
             var newItem = createListItem(newModelItem);
             newItem.addEventListener("contextmenu", function (e) {
@@ -263,7 +332,7 @@ var wishlistApp = (function () {
 
         // TODO: remove this to lock down wishlist
         _onRemoveItem = function (itemDiv) {
-            var table = document.getElementById("list_" + user);
+            var table = document.getElementById("list_" + state.user);
             var itemRow = itemDiv.parentElement.parentElement;
             var index = -1;
             for (var i = 0; i < table.rows.length; i++) {
@@ -306,7 +375,7 @@ var wishlistApp = (function () {
             var nameSpan = $('<span />').text(name),
                 priceSpan = $('<span />').text(' (' + price + ')'),
                 descrDiv = $('<div />').text(descr).attr('id', 'description-div'),
-            if (user == owner) descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
+            if (state.user == owner) descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
 
             var closeBtn = $('<button value="Close" />').css('background-color', 'LightGray');
             closeBtn.addEventListener("click", function () {
@@ -320,7 +389,7 @@ var wishlistApp = (function () {
             div.appendChild(document.createElement("hr"));
             div.appendChild(closeBtn);
 
-            if (user == owner) {
+            if (state.user == owner) {
                 var saveBtn = $('<button value="Save" />');
                 saveBtn.addEventListener("click", function () {
                     _onHideDescr(itemRow.firstChild.lastChild, true);
@@ -339,15 +408,14 @@ var wishlistApp = (function () {
                     .replace(new RegExp("</div>", "g"), "\n")
                     .replace(new RegExp("<br>", "g"), "\n");
                 descrDiv.innerHTML = descr;
-                _onSave(session, user, document.getElementById("save-button"));
+                _onSave();
             }
             div.innerHTML = "";
             div.hide();
         },
 
-        _onSave = async function (saveButton) {
-            saveButton.innerHTML = "Saving...";
-            saveButton.setAttribute("disabled", "disabled");
+        _onSave = async function () {
+            setSaveInProgress();
 
             var userItems = [];
             var claimableItems = [];
@@ -364,8 +432,8 @@ var wishlistApp = (function () {
                 var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
                 userItems.push({
                     name: itemName,
-                    session: session,
-                    owner: user,
+                    session: state.session,
+                    owner: state.user,
                     claimer: "",
                     price: itemPrice,
                     order: j - 1,
@@ -382,12 +450,12 @@ var wishlistApp = (function () {
                     var itemData = list.children[j].firstChild;
                     if (itemData.children.length == 4) {
                         var checkbox = itemData.children[2];
-                        var itemClaimer = (checkbox.checked) ? user : "";
+                        var itemClaimer = (checkbox.checked) ? state.user : "";
                         var itemPrice = itemData.firstChild.innerHTML;
                         var itemDescr = itemData.lastChild.innerHTML;
                         claimableItems.push({
                             name: itemData.children[1].innerHTML,
-                            session: session,
+                            session: state.session,
                             owner: listOwner,
                             claimer: itemClaimer,
                             price: itemPrice,
@@ -398,31 +466,18 @@ var wishlistApp = (function () {
                 }
             }
 
-            if (restApp.updateItems(session, user, userItems, claimableItems)) {
-                saveButton.innerHTML = "Saved";
-                saveButton.css('background-color', 'green');
-            } else {
-                saveButton.innerHTML = "Failed";
-                saveButton.css('background-color', 'red');
-                await sleep(1000);
-                if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
-                    + " If the problem persists, please contact the site maintainers using the Help link below.")) {
-                    location.reload();
-                }
-            }
-
-            await sleep(1000);
-            saveButton.removeAttribute("disabled");
-            saveButton.innerHTML = "Save";
-            saveButton.css('background-color', '#69a0f3');
+            websocketApp.updateItems(userItems, claimableItems);
         }
 
     return {
-        init: init
+        init: init,
+        refreshOtherLists: refreshOtherLists,
+        saveSucceeded: saveSucceeded,
+        saveFailed: saveFailed
     }
 }());
 
-// cookieHandler handes everthing related to storing, clearing, and retrieving browser cookies.
+// cookieHandler handles everthing related to storing, clearing, and retrieving browser cookies.
 var cookieHandler = (function () {
     var sessionKey = "wl_session",
         userKey = "wl_user",
@@ -435,7 +490,7 @@ var cookieHandler = (function () {
 
         getSession = function () {
             var session = getCookie(sessionKey);
-            return (session == null) ? "" : user;
+            return (session == null) ? "" : session;
         },
 
         getUser = function () {
@@ -489,15 +544,15 @@ var restApp = (function () {
         location.reload();
     },
 
-        signIn = function (session, user, password) {
-            if (isBlankString(session) || isBlankString(user)) return false;
+        signIn = function (password) {
+            if (isBlankString(state.session) || isBlankString(state.user)) return false;
 
             // FIXME: jquery
             var req = new XMLHttpRequest()
             req.open("PUT", "/signin", false)
             req.send(JSON.stringify({
-                sessionName: session,
-                username: user,
+                sessionName: state.session,
+                username: state.user,
                 password: password
             }));
 
@@ -511,12 +566,10 @@ var restApp = (function () {
             }
         },
 
-        getItems = function (session, user) {
-            var session = state.session.replace(" ", "%20");
-
+        getItems = function () {
             // FIXME: jquery. Also, status unauthorized.
             var req = new XMLHttpRequest()
-            req.open("GET", "/lists/" + session, false)
+            req.open("GET", "/lists/" + state.session.replace(" ", "%20"), false)
             req.send();
 
             var respItems = JSON.parse(req.responseText),
@@ -535,12 +588,11 @@ var restApp = (function () {
             return items;
         },
 
-        updateItems = function (session, user, userItems, otherItems) {
-            var session = state.session.replace(" ", "%20");
+        updateItems = function (userItems, otherItems) {
 
             // FIXME: jquery. Also, status unauthorized.
             var req = new XMLHttpRequest()
-            req.open("PUT", "/lists/" + session, false)
+            req.open("PUT", "/lists/" + state.session.replace(" ", "%20"), false)
             req.send(JSON.stringify({
                 userName: state.user,
                 userItems: userItems,
@@ -560,4 +612,69 @@ var restApp = (function () {
         getItems: getItems,
         updateItems: updateItems
     }
+}());
+
+// websocketApp handles all web socket communication with the server.
+var websocketApp = (function () {
+    var socket,
+        url,
+
+        updateItems = function(userItems, otherItems) {
+            h = {
+                session: state.session.replace(" ", "%20"),
+                userName: state.user,
+                userItems: userItems,
+                otherItems: otherItems
+            };
+
+            socket.send("update:" + JSON.stringify(h));
+        },
+
+        setupEventHandlers = function () {
+            socket.onopen = function (event) {
+                state.socketConnected = true;
+            };
+            socket.onerror = function (error) {
+                alert('WebSocket Error: ' + JSON.stringify(error));
+            };
+            socket.onmessage = function (event) {
+                var message = event.data;
+                if (message.startsWith('update')) {
+                    var body = message.substring(message.indexOf(':') + 1);
+                    var h = JSON.parse(body);
+                    if (h.session == state.session && h.userName != state.user) {
+                        wishlistApp.refreshOtherLists();
+                    }
+                } else if (message.startsWith('save-success')) {
+                    if (message.substring(message.indexOf(':') + 1) == state.user) {
+                        wishlistApp.saveSucceeded();
+                    }
+                } else if (message.startsWith('save-fail')) {
+                    if (message.substring(message.indexOf(':') + 1) == state.user) {
+                        wishlistApp.saveFailed();
+                    }
+                }
+            };
+            socket.onclose = function (event) {
+                state.socketConnected = false;
+            };
+        },
+
+        init = function () {
+            href = window.location.href;
+            url = href.replace(window.location.protocol, 'ws:').replace(href.substring(href.indexOf('?')), 'ws/session');
+            socket = new WebSocket(url);
+            setupEventHandlers();
+        },
+
+        close = function () {
+            if (socket != null)
+                socket.close();
+        };
+
+    return {
+        init: init,
+        close: close,
+        updateItems: updateItems
+    };
 }());
