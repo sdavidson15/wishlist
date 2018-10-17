@@ -117,12 +117,45 @@ var wishlistApp = (function () {
         redrawWishList = async function () {
             items = await restApp.getItems();
             refreshOwners();
+            
+            var includeCurrentUser = true;
+            clearLists(includeCurrentUser);
+            populateLists(includeCurrentUser);
+            setupWishlistListeners(includeCurrentUser);
+        },
 
-            var oldSaveDiv = $('save-div');
-            $('lists').empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
-            $('banner-text').text(state.session);
-            populateLists();
-            setupWishlistListeners();
+        redrawOtherLists = async function () {
+            // Update items in everyone's lists except this user's.
+            var updatedItems = await restApp.getItems();
+            var _items = [];
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].owner == state.user) {
+                    _items.push(items[i]);
+                }
+            }
+            for (var i = 0; i < updatedItems.length; i++) {
+                if (updatedItems[i].owner != state.user) {
+                    _items.push(updatedItems[i]);
+                }
+            }
+            items = _items;
+
+            refreshOwners();
+
+            var includeCurrentUser = false;
+            clearLists(includeCurrentUser);
+            populateLists(includeCurrentUser);
+            setupWishlistListeners(includeCurrentUser);
+        }
+
+        clearLists = function (includeCurrentUser) {
+            if (includeCurrentUser) {
+                var oldSaveDiv = $('save-div');
+                $('lists').empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
+                $('banner-text').text(state.session);
+            } else {
+                $('other-lists').empty();
+            }
         },
 
         refreshOwners = function () {
@@ -132,10 +165,10 @@ var wishlistApp = (function () {
             }
         },
 
-        populateLists = function () {
+        populateLists = function (includeCurrentUser) {
             // Create the tables
             for (var i = 0; i < owners.length; i++) {
-                if (owners[i] == state.user)
+                if (includeCurrentUser && owners[i] == state.user)
                     $('lists').prepend(createList(state.user));
                 else
                     $('other-lists').append(createList(owners[i]));
@@ -143,12 +176,18 @@ var wishlistApp = (function () {
 
             // Create the items
             for (i = 0; i < items.length; i++) {
+                if (!includeCurrentUser && items[i].owner == state.user) {
+                    continue;
+                }
+
                 $('list_' + items[i].owner).append(createItem(items[i]));
             }
 
             // TODO: remove this to lock down wishlist
             // Add the "Add item..." cell
-            $('list_' + state.user).append(createAddItem());
+            if (includeCurrentUser) { 
+                $('list_' + state.user).append(createAddItem());
+            }
         },
 
         createList = function (owner) {
@@ -268,27 +307,26 @@ var wishlistApp = (function () {
             saveButton.css('background-color', 'red');
         },
 
-        setupWishlistListeners = function () {
-            document.getElementById("add_item").addEventListener("click", function (event) {
-                event.preventDefault();
-                _onAddItem();
-            });
-            document.getElementById("signout_link").addEventListener("click", function () {
-                _onSignOut();
-            });
-            document.getElementById("save-button").addEventListener("click", function (e) {
-                _onSave(e.target);
-            });
+        setupWishlistListeners = function (includeCurrentUser) {
+            if (includeCurrentUser) {
+                // Add listeners to this user's items
+                var userList = document.getElementById("list_" + state.user);
+                for (i = 1; i < userList.children.length; i++) {
+                    userList.children[i].addEventListener("contextmenu", function (e) {
+                        e.preventDefault();
+                        _onRemoveItem(e.target); // TODO: remove this to lock down wishlist
+                    });
+                    userList.children[i].addEventListener("dblclick", function (e) {
+                        _onShowDescr(e.target);
+                    });
+                }
 
-            // Add listeners to this user's items
-            var userList = document.getElementById("list_" + state.user);
-            for (i = 1; i < userList.children.length; i++) {
-                userList.children[i].addEventListener("contextmenu", function (e) {
-                    e.preventDefault();
-                    _onRemoveItem(e.target); // TODO: remove this to lock down wishlist
+                document.getElementById("add_item").addEventListener("click", function (event) {
+                    event.preventDefault();
+                    _onAddItem();
                 });
-                userList.children[i].addEventListener("dblclick", function (e) {
-                    _onShowDescr(e.target);
+                document.getElementById("save-button").addEventListener("click", function (e) {
+                    _onSave(e.target);
                 });
             }
 
@@ -302,6 +340,10 @@ var wishlistApp = (function () {
                     });
                 }
             }
+
+            document.getElementById("signout_link").addEventListener("click", function () {
+                _onSignOut();
+            });
         },
 
         _onSignOut = function () {
@@ -471,7 +513,7 @@ var wishlistApp = (function () {
 
     return {
         init: init,
-        refreshOtherLists: refreshOtherLists,
+        redrawOtherLists: redrawOtherLists,
         saveSucceeded: saveSucceeded,
         saveFailed: saveFailed
     }
@@ -643,7 +685,7 @@ var websocketApp = (function () {
                     var body = message.substring(message.indexOf(':') + 1);
                     var h = JSON.parse(body);
                     if (h.session == state.session && h.userName != state.user) {
-                        wishlistApp.refreshOtherLists();
+                        wishlistApp.redrawOtherLists();
                     }
                 } else if (message.startsWith('save-success')) {
                     if (message.substring(message.indexOf(':') + 1) == state.user) {
