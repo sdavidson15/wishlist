@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 	"strings"
 
 	"wishlist/common/util"
@@ -43,7 +44,7 @@ func (i *Imdb) Run() {
 
 		resp := &response{}
 		if request.requestType != noRequest {
-			filePath := getFilePath(request.sessionName, request.requestType+".json")
+			filePath := getFilePath(request.sessionName, request.requestType+".json", false)
 			bytes, err := ioutil.ReadFile(filePath)
 			if err != nil {
 				i.responseChan <- &response{err: fmt.Errorf("Session not found")}
@@ -71,48 +72,40 @@ func (i *Imdb) Run() {
 		update := <-i.updateChan
 
 		if len(update.items) > 0 {
-			filePath := getFilePath(request.sessionName, itemsRequest+".json")
-			if err := os.Remove(filePath); err != nil {
-				panic(err)
-			}
-
-			file, err := os.Create(filePath)
-			if err != nil {
-				panic(err)
-			}
-			file.Close()
-
 			itemsJson, err := json.Marshal(update.items)
 			if err != nil {
 				panic(err)
 			}
 
-			err = ioutil.WriteFile(filePath, itemsJson, 0644)
-			if err != nil {
-				panic(err)
-			}
-		}
-		if len(update.users) > 0 {
-			filePath := getFilePath(request.sessionName, usersRequest+".json")
+			filePath := getFilePath(request.sessionName, itemsRequest+".json", false)
 			if err := os.Remove(filePath); err != nil {
 				panic(err)
 			}
 
-			file, err := os.Create(filePath)
-			if err != nil {
-				panic(err)
-			}
-			file.Close()
+			writeFile(filePath, itemsJson);
 
+			snapshotPath := getFilePath(timestamp() + "_" + 
+				request.sessionName, itemsRequest+"_snapshot.json", true)
+			
+			writeFile(snapshotPath, itemsJson)
+		}
+		if len(update.users) > 0 {
 			usersJson, err := json.Marshal(update.users)
 			if err != nil {
 				panic(err)
 			}
 
-			err = ioutil.WriteFile(filePath, usersJson, 0644)
-			if err != nil {
+			filePath := getFilePath(request.sessionName, usersRequest+".json", false)
+			if err := os.Remove(filePath); err != nil {
 				panic(err)
 			}
+
+			writeFile(filePath, usersJson);
+
+			snapshotPath := getFilePath(timestamp() + "_" +
+				request.sessionName, usersRequest+"_snapshot.json", true)
+			
+			writeFile(snapshotPath, usersJson)
 		}
 	}
 }
@@ -132,11 +125,38 @@ func (i *Imdb) Commit(items []model.Item, users []model.User) {
 	i.updateChan <- &response{items, users, nil}
 }
 
-func getFilePath(sessionName, suffix string) string {
+func writeFile(filePath string, data []byte) {
+	file, err := os.Create(filePath)
+	if err != nil {
+		panic(err)
+	}
+	file.Close()
+
+	err = ioutil.WriteFile(filePath, data, 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getFilePath(sessionName, suffix string, isSnapshot bool) string {
 	currentDirectory, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	return currentDirectory + "\\storage\\imdb\\db\\" +
-		fmt.Sprintf("%s_%s", util.RemoveAllWhiteSpace(strings.ToLower(sessionName)), suffix)
+
+	pathSuffix := ""
+	if isSnapshot {
+		pathSuffix = "\\snapshot"
+	}
+
+	return currentDirectory + "\\storage\\imdb\\db" + pathSuffix +
+		fmt.Sprintf("\\%s_%s", util.RemoveAllWhiteSpace(strings.ToLower(sessionName)), suffix)
+}
+
+func timestamp() string {
+	// Hold for 10 ms to ensure unique timestamps
+	time.Sleep(10 * time.Millisecond)
+
+	str := time.Now().Format("2006Jan_2_15:04:05:06")
+	return strings.Replace(str, ":", "꞉", -1) // Replace U+003A with U+A789
 }
