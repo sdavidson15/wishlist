@@ -26,20 +26,18 @@ function sleep(ms) {
 
 // homepage handles everything related to the homepage.
 var homepage = (function () {
-    var bannerText = 'Project Wish List',
-
-        init = function () {
+    var init = function () {
             cookieHandler.clearCookies();
+            wishlistApp.close();
             render();
         },
 
         close = function () {
-            $('logged-out').hide();
+            $("#logged-out").hide();
         },
 
         render = function () {
-            $('logged-out').show();
-            $('home-banner').text(bannerText);
+            $("#logged-out").show();
             setupHomepageListeners();
         },
 
@@ -69,7 +67,8 @@ var homepage = (function () {
         }
 
     return {
-        init: init
+        init: init,
+        close: close
     }
 }());
 
@@ -98,21 +97,20 @@ var wishlistApp = (function () {
                 close();
                 homepage.init();
             } else {
-                $('logged-in').show();
+                homepage.close();
+                $("#logged-in").show();
                 redrawWishList();
             }
         },
 
         close = function () {
             websocketApp.close();
-            $('logged-out').hide();
+            $("#logged-out").hide();
             state.session = null;
             state.user = null;
             items = null;
             owners = null;
         },
-
-        // TODO: refreshOtherLists
 
         redrawWishList = async function () {
             items = await restApp.getItems();
@@ -150,11 +148,11 @@ var wishlistApp = (function () {
 
         clearLists = function (includeCurrentUser) {
             if (includeCurrentUser) {
-                var oldSaveDiv = $('save-div');
-                $('lists').empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
-                $('banner-text').text(state.session);
+                var oldSaveDiv = $("#save-div");
+                $("#lists").empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
+                $("#banner-text").text(state.session);
             } else {
-                $('other-lists').empty();
+                $("#other-lists").empty();
             }
         },
 
@@ -169,9 +167,9 @@ var wishlistApp = (function () {
             // Create the tables
             for (var i = 0; i < owners.length; i++) {
                 if (includeCurrentUser && owners[i] == state.user)
-                    $('lists').prepend(createList(state.user));
+                    $("#lists").prepend(createList(state.user));
                 else
-                    $('other-lists').append(createList(owners[i]));
+                    $("#other-lists").append(createList(owners[i]));
             }
 
             // Create the items
@@ -180,13 +178,13 @@ var wishlistApp = (function () {
                     continue;
                 }
 
-                $('list_' + items[i].owner).append(createItem(items[i]));
+                $("#list_" + items[i].owner).append(createItem(items[i]));
             }
 
             // TODO: remove this to lock down wishlist
             // Add the "Add item..." cell
             if (includeCurrentUser) { 
-                $('list_' + state.user).append(createAddItem());
+                $("#list_" + state.user).append(createAddItem());
             }
         },
 
@@ -416,8 +414,11 @@ var wishlistApp = (function () {
 
             var nameSpan = $('<span />').text(name),
                 priceSpan = $('<span />').text(' (' + price + ')'),
-                descrDiv = $('<div />').text(descr).attr('id', 'description-div'),
-            if (state.user == owner) descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
+                descrDiv = $('<div />').text(descr).attr('id', 'description-div');
+
+            if (state.user == owner) {
+                descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
+            }
 
             var closeBtn = $('<button value="Close" />').css('background-color', 'LightGray');
             closeBtn.addEventListener("click", function () {
@@ -513,6 +514,7 @@ var wishlistApp = (function () {
 
     return {
         init: init,
+        close: close,
         redrawOtherLists: redrawOtherLists,
         saveSucceeded: saveSucceeded,
         saveFailed: saveFailed
@@ -703,6 +705,12 @@ var websocketApp = (function () {
         },
 
         init = function () {
+            // TODO: remove this
+            state.socketConnected = true;
+            if (state.socketConnected) {
+                return;
+            }
+
             href = window.location.href;
             url = href.replace(window.location.protocol, 'ws:').replace(href.substring(href.indexOf('?')), 'ws/session');
             socket = new WebSocket(url);
