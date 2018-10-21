@@ -9,26 +9,21 @@ import (
 	"github.com/gorilla/websocket"
 
 	"wishlist/common"
-	"wishlist/model"
 )
-
-type message struct {
-	session    string `json:"Session"`
-	user       string `json:"User"`
-	userItems  model.Items
-	claimItems model.Items
-}
 
 // FIXME: get rid of global vars
 var (
+	manager = &common.Manager{}
 	clients   = make(map[*websocket.Conn]bool)
-	broadcast = make(chan message)
+	broadcast = make(chan string)
 	upgrader  = websocket.Upgrader{}
 )
 
-func Start(manager *common.Manager, router *mux.Router, uri string) {
-	router.HandleFunc("/ws", handleConnections)
-	go handleMessages(manager)
+func Start(m *common.Manager, router *mux.Router, uri string) {
+	manager = m
+
+	router.HandleFunc("/ws", handleMessages)
+	go broadcaster(manager)
 
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
 
@@ -36,7 +31,7 @@ func Start(manager *common.Manager, router *mux.Router, uri string) {
 	log.Fatal(http.ListenAndServe(uri, router))
 }
 
-func handleConnections(w http.ResponseWriter, r *http.Request) {
+func handleMessages(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		// FIXME: build a list of accepted origins
 		return true
@@ -51,38 +46,31 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 
 	for {
-		var msg message
-
-		err := ws.ReadJSON(&msg)
+		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			log.Printf("Malformed message: %v", err)
+			log.Printf("%v", err)
+			break
+		}
+
+		resp, err := handleMessage(manager, string(msg))
+		if err != nil {
+			log.Printf("Failed to handle websocket message: %v", err)
+			broadcast <- "server-error"
 			continue
 		}
 
-		broadcast <- msg
+		broadcast <- resp
 	}
 }
 
-func handleMessages(manager *common.Manager) {
+func broadcaster(manager *common.Manager) {
 	for {
-		msg := <-broadcast
-
-		log.Print(msg)
-		if err := manager.UpdateLists(
-			msg.session,
-			msg.user,
-			msg.userItems,
-			msg.claimItems,
-		); err != nil {
-
-			log.Printf("Failed to update items: %v", err)
-			// TODO: broadcast a "save failed" message
-		}
+		resp := <-broadcast
 
 		for client, _ := range clients {
-			err := client.WriteJSON(msg)
+			err := client.WriteMessage(1, []byte(resp))
 			if err != nil {
-				log.Printf("A client failed to broadcast a message: %v", err)
+				log.Printf("A client failed to broadcast: %v", err)
 				client.Close()
 				delete(clients, client)
 			}

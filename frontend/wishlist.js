@@ -773,16 +773,18 @@ var websocketApp = (function () {
     var socket,
         url,
 
+        serverError = function () {
+            alert("Something went wrong.");
+            location.reload();
+        },
+
         updateItems = function(userItems, claimItems) {
             h = {
-                Session: state.session.replace(" ", "%20"),
-                User: state.user,
+                session: state.session,
+                user: state.user,
                 userItems: userItems,
                 claimItems: claimItems
             };
-
-            // TODO: remove this
-            wishlistApp.saveSucceeded();
 
             socket.send("update:" + JSON.stringify(h));
         },
@@ -792,17 +794,12 @@ var websocketApp = (function () {
                 state.socketConnected = true;
             };
             socket.onerror = function (error) {
-                alert('WebSocket Error: ' + JSON.stringify(error));
+                // do nothing
             };
             socket.onmessage = function (event) {
                 var message = event.data;
-                if (message.startsWith('update')) {
-                    var body = message.substring(message.indexOf(':') + 1);
-                    var h = JSON.parse(body);
-                    if (h.session == state.session && h.userName != state.user) {
-                        wishlistApp.redrawOtherLists();
-                    }
-                } else if (message.startsWith('save-success')) {
+
+                if (message.startsWith('save-success')) {
                     if (message.substring(message.indexOf(':') + 1) == state.user) {
                         wishlistApp.saveSucceeded();
                     }
@@ -810,6 +807,8 @@ var websocketApp = (function () {
                     if (message.substring(message.indexOf(':') + 1) == state.user) {
                         wishlistApp.saveFailed();
                     }
+                } else if (message == 'server-error') {
+                    serverError();
                 }
             };
             socket.onclose = function (event) {
@@ -818,14 +817,9 @@ var websocketApp = (function () {
         },
 
         init = function () {
-            // TODO: remove this
-            state.socketConnected = true;
-            if (state.socketConnected) {
-                return;
-            }
-
             href = window.location.href;
-            url = href.replace(window.location.protocol, 'ws:').replace(href.substring(href.indexOf('?')), 'ws/session');
+            url = href.replace(window.location.protocol, 'ws:') + 'ws';
+            url = url.replace(url.substring(url.indexOf('/', 5)+1), 'ws');
             socket = new WebSocket(url);
             setupEventHandlers();
         },

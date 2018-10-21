@@ -25,7 +25,6 @@ func main() {
 	manager := common.NewManager(store)
 
 	router := rest.Setup(manager, restUri)
-	//rest.Mock()
 	websocket.Start(manager, router, restUri)
 }
 

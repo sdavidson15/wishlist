@@ -1,13 +1,13 @@
 package model
 
 type Item struct {
-	Name    string `json:"Name"`
-	Session string `json:"Session"`
-	Owner   string `json:"Owner"`
-	Claimer string `json:"Claimer"`
-	Price   string `json:"Price"`
-	Order   int    `json:"Order"`
-	Descr   string `json:"Descr"`
+	Name    string
+	Session string
+	Owner   string
+	Claimer string
+	Price   string
+	Order   int
+	Descr   string
 }
 
 type Items []Item
