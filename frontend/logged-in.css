@@ -93,14 +93,6 @@ button {
     overflow: auto;
 }
 
-#lists table {
-    width: 17%;
-    vertical-align: top;
-    margin: 0;
-    padding: 0;
-    float: left;
-}
-
 #lists .wl-td {
     height: 3em;
     padding: 0;
@@ -113,14 +105,6 @@ button {
     white-space: nowrap;
     overflow: auto;
     float: left;
-}
-
-#other-lists table {
-    width: 22%;
-    vertical-align: top; 
-    margin: 0;
-    padding: 0;
-    display: inline-block;
 }
 
 #save-div {

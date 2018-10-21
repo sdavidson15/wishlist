@@ -243,6 +243,25 @@ var wishlistApp = (function () {
             table.id = "list_" + owner;
             table.className = "table table-bordered";
 
+            // TODO: move this into "Template" or css
+            if (state.user != owner) {
+                table.setAttribute("style",
+                    "width: 22%;" +
+                    "vertical-align: top;" +
+                    "margin: 0;" +
+                    "padding: 0;" +
+                    "display: inline;"
+                );
+            } else {
+                table.setAttribute("style",
+                    "width: 17%;" +
+                    "vertical-align: top;" +
+                    "margin: 0;" +
+                    "padding: 0;" +
+                    "float: left;"
+                );
+            }
+
             var header = document.createElement("th");
             header.appendChild(document.createTextNode(owner));
             var row = document.createElement("tr");
