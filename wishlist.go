@@ -11,6 +11,7 @@ import (
 	"wishlist/storage"
 	"wishlist/storage/imdb"
 	"wishlist/storage/mysql"
+	"wishlist/websocket"
 )
 
 func main() {
@@ -22,7 +23,10 @@ func main() {
 	dbDriver, dbSource, restUri := getConfiguration("config.txt")
 	store := getStorage(dbDriver, dbSource, *inmem)
 	manager := common.NewManager(store)
-	rest.Start(manager, restUri)
+
+	router := rest.Setup(manager, restUri)
+	//rest.Mock()
+	websocket.Start(manager, router, restUri)
 }
 
 func getConfiguration(filePath string) (dbDriver, dbSource, restUri string) {

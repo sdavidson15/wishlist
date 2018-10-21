@@ -586,13 +586,13 @@ var wishlistApp = (function () {
                 var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
                 var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
                 userItems.push({
-                    name: itemName,
-                    session: state.session,
-                    owner: state.user,
-                    claimer: "",
-                    price: itemPrice,
-                    order: j - 1,
-                    descr: itemDescr
+                    Name: itemName,
+                    Session: state.session,
+                    Owner: state.user,
+                    Claimer: "",
+                    Price: itemPrice,
+                    Order: j - 1,
+                    Descr: itemDescr
                 });
             }
 
@@ -609,13 +609,13 @@ var wishlistApp = (function () {
                         var itemPrice = itemData.firstChild.innerHTML;
                         var itemDescr = itemData.lastChild.innerHTML;
                         claimableItems.push({
-                            name: itemData.children[1].innerHTML,
-                            session: state.session,
-                            owner: listOwner,
-                            claimer: itemClaimer,
-                            price: itemPrice,
-                            order: j - 1,
-                            descr: itemDescr
+                            Name: itemData.children[1].innerHTML,
+                            Session: state.session,
+                            Owner: listOwner,
+                            Claimer: itemClaimer,
+                            Price: itemPrice,
+                            Order: j - 1,
+                            Descr: itemDescr
                         });
                     }
                 }
@@ -773,12 +773,12 @@ var websocketApp = (function () {
     var socket,
         url,
 
-        updateItems = function(userItems, otherItems) {
+        updateItems = function(userItems, claimItems) {
             h = {
-                session: state.session.replace(" ", "%20"),
-                userName: state.user,
+                Session: state.session.replace(" ", "%20"),
+                User: state.user,
                 userItems: userItems,
-                otherItems: otherItems
+                claimItems: claimItems
             };
 
             // TODO: remove this

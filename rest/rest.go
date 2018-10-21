@@ -1,8 +1,6 @@
 package rest
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -10,7 +8,7 @@ import (
 	"wishlist/common"
 )
 
-func Start(manager *common.Manager, restUri string) {
+func Setup(manager *common.Manager, restUri string) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 	h := &Handler{manager}
 	for _, route := range h.Routes() {
@@ -25,7 +23,6 @@ func Start(manager *common.Manager, restUri string) {
 			Name(route.Name).
 			Handler(handler)
 	}
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
-	log.Print(fmt.Sprintf("Serving on %s", restUri))
-	log.Fatal(http.ListenAndServe(restUri, router))
+
+	return router
 }
