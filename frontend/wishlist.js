@@ -4,7 +4,7 @@ var state = {
     session: null,
     user: null,
     socketConnected: false,
-    isLockedDown: true
+    isLockedDown: false
 }
 
 function main() {
@@ -59,7 +59,7 @@ var homepage = (function () {
             state.session = document.getElementsByTagName("input")[0].value;
             state.user = document.getElementsByTagName("input")[1].value;
 
-            var password = (state.session == demo_session) ? document.getElementsByTagName("input")[2].value : "";
+            var password = (state.session != demo_session) ? document.getElementsByTagName("input")[2].value : "";
 
             if (restApp.signIn(password)) {
                 cookieHandler.setSession(state.session);
