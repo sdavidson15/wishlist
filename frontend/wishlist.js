@@ -3,7 +3,8 @@ var demo_session = 'OG Wish List'
 var state = {
     session: null,
     user: null,
-    socketConnected: false
+    socketConnected: false,
+    isLockedDown: true
 }
 
 function main() {
@@ -146,6 +147,11 @@ var wishlistApp = (function () {
             var includeCurrentUser = true;
             clearLists(includeCurrentUser);
             populateLists(includeCurrentUser);
+            
+            if (state.isLockedDown) {
+                setSaveLock();
+            }
+
             setupWishlistListeners(includeCurrentUser);
         },
 
@@ -224,8 +230,7 @@ var wishlistApp = (function () {
             }
 
             // Add the "Add item..." cell
-            if (includeCurrentUser) { 
-                // TODO: remove this to lock down wishlist
+            if (includeCurrentUser && !state.isLockedDown) { 
                 var userList = document.getElementById("list_" + state.user),
                     addItem = createAddItem();
 
@@ -259,8 +264,8 @@ var wishlistApp = (function () {
             var priceDiv = document.createElement("div");
             priceDiv.className = "wl-price-box";
             priceDiv.innerHTML = item.price;
-            if (state.user == item.owner) {
-                priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
+            if (state.user == item.owner && !state.isLockedDown) {
+                priceDiv.setAttribute("contenteditable", "");
             }
             itemData.appendChild(priceDiv);
 
@@ -268,7 +273,10 @@ var wishlistApp = (function () {
             var contentDiv = document.createElement("div");
             itemData.appendChild(contentDiv);
             if (state.user == item.owner) {
-                contentDiv.setAttribute("contenteditable", "") // TODO: remove this to lock wishlists down
+                if (!state.isLockedDown) {
+                    contentDiv.setAttribute("contenteditable", "")
+                }
+
                 contentDiv.className = "wl-item-content-user";
             } else if (item.claimer != "" && item.claimer != state.user) {
                 contentDiv.className = "wl-item-content-claimed";
@@ -360,6 +368,13 @@ var wishlistApp = (function () {
             saveButton.style.backgroundColor = "red";
         },
 
+        setSaveLock = function () {
+            var saveButton = document.getElementById("save-button");
+            saveButton.setAttribute("disabled", "disabled");
+            saveButton.innerHTML = "Locked";
+            saveButton.style.backgroundColor = "LightGray";
+        },
+
         setupWishlistListeners = function (includeCurrentUser) {
             if (includeCurrentUser) {
                 // Add listeners to this user's items
@@ -367,20 +382,22 @@ var wishlistApp = (function () {
                 for (i = 1; i < userList.children.length; i++) {
                     userList.children[i].addEventListener("contextmenu", function (e) {
                         e.preventDefault();
-                        _onRemoveItem(e.target); // TODO: remove this to lock down wishlist
+                        _onRemoveItem(e.target);
                     });
                     userList.children[i].addEventListener("dblclick", function (e) {
                         _onShowDescr(e.target);
                     });
                 }
 
-                document.getElementById("add-item").addEventListener("click", function (event) {
-                    event.preventDefault();
-                    _onAddItem();
-                });
-                document.getElementById("save-button").addEventListener("click", function (e) {
-                    _onSave(e.target);
-                });
+                if (!state.isLockedDown) {
+                    document.getElementById("add-item").addEventListener("click", function (event) {
+                        event.preventDefault();
+                        _onAddItem();
+                    });
+                    document.getElementById("save-button").addEventListener("click", function (e) {
+                        _onSave(e.target);
+                    });
+                }
             }
 
             // Add listeners to the other user's items
@@ -404,8 +421,11 @@ var wishlistApp = (function () {
             homepage.init();
         },
 
-        // TODO: remove this to lock down wishlist
         _onAddItem = function () {
+            if (state.isLockedDown) {
+                return;
+            }
+
             var table = document.getElementById("list_" + state.user);
             if (table.children.length >= 17) {
                 alert("No more than 15 items are allowed per list.");
@@ -425,8 +445,11 @@ var wishlistApp = (function () {
             table.insertBefore(newItem, table.children[table.children.length - 1]);
         },
 
-        // TODO: remove this to lock down wishlist
         _onRemoveItem = function (itemDiv) {
+            if (state.isLockedDown) {
+                return;
+            }
+
             var table = document.getElementById("list_" + state.user);
             var itemRow = itemDiv.parentElement.parentElement;
             var index = -1;
@@ -471,8 +494,8 @@ var wishlistApp = (function () {
                 priceSpan = $('<span />').text(' (' + price + ')'),
                 descrDiv = $('<div />').text(descr).attr('id', 'description-div');
 
-            if (state.user == owner) {
-                descrDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock down wishlist
+            if (state.user == owner && !state.isLockedDown) {
+                descrDiv.setAttribute("contenteditable", "");
             }
 
             var closeBtn = $('<button value="Close" />').css('background-color', 'LightGray');
@@ -688,8 +711,6 @@ var restApp = (function () {
         },
 
         updateItems = function (userItems, otherItems) {
-
-            // FIXME: jquery. Also, status unauthorized.
             var req = new XMLHttpRequest()
             req.open("PUT", "/lists/" + state.session.replace(" ", "%20"), false)
             req.send(JSON.stringify({
