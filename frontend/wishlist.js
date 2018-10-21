@@ -821,7 +821,8 @@ var websocketApp = (function () {
         init = function () {
             href = window.location.href;
             url = href.replace(window.location.protocol, 'ws:') + 'ws';
-            url = url.replace(url.substring(url.indexOf('/', 5)+1), 'ws');
+            url = url.replace(url.substring(url.indexOf('/', 5)+1), 'ws/' + state.session.replace(/\s/g, ""));
+
             socket = new WebSocket(url);
             setupEventHandlers();
         },

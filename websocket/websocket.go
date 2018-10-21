@@ -4,25 +4,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"wishlist/common"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-
-	"wishlist/common"
 )
 
 // FIXME: get rid of global vars
 var (
-	manager = &common.Manager{}
-	clients   = make(map[*websocket.Conn]bool)
-	broadcast = make(chan string)
+	manager   = &common.Manager{}
+	clientMap = make(map[string][]*websocket.Conn)
+	broadcast = make(chan response)
 	upgrader  = websocket.Upgrader{}
 )
+
+type response struct {
+	resp    string
+	session string
+}
 
 func Start(m *common.Manager, router *mux.Router, uri string) {
 	manager = m
 
-	router.HandleFunc("/ws", handleMessages)
+	router.HandleFunc("/ws/{session:[a-zA-Z]+}", handleMessages)
 	go broadcaster(manager)
 
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
@@ -43,7 +48,8 @@ func handleMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	clients[ws] = true
+	session := strings.Split(r.RequestURI, "/")[2]
+	clientMap[session] = append(clientMap[session], ws)
 
 	for {
 		_, msg, err := ws.ReadMessage()
@@ -55,25 +61,35 @@ func handleMessages(w http.ResponseWriter, r *http.Request) {
 		resp, err := handleMessage(manager, string(msg))
 		if err != nil {
 			log.Printf("Failed to handle websocket message: %v", err)
-			broadcast <- "server-error"
+			broadcast <- response{"server-error", session}
 			continue
 		}
 
-		broadcast <- resp
+		broadcast <- response{resp, session}
 	}
 }
 
 func broadcaster(manager *common.Manager) {
 	for {
-		resp := <-broadcast
+		r := <-broadcast
 
-		for client, _ := range clients {
-			err := client.WriteMessage(1, []byte(resp))
-			if err != nil {
-				log.Printf("A client failed to broadcast: %v", err)
-				client.Close()
-				delete(clients, client)
+		for session, clients := range clientMap {
+			if r.session != session {
+				continue
 			}
+
+			remainingClients := []*websocket.Conn{}
+			for _, client := range clients {
+				err := client.WriteMessage(1, []byte(r.resp))
+				if err != nil {
+					log.Printf("A client failed to broadcast: %v", err)
+					client.Close()
+				} else {
+					remainingClients = append(remainingClients, client)
+				}
+			}
+			clientMap[session] = remainingClients
+			break
 		}
 	}
 }
