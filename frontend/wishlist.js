@@ -209,7 +209,7 @@ var wishlistApp = (function () {
                         userList = createList(state.user);
 
                     lists.insertBefore(userList, lists.firstChild);
-                } else { // TODO: I may need something like else if (owners[i] != state.user)
+                } else if (owners[i] != state.user) {
                     var otherLists = document.getElementById("other-lists"),
                         newList = createList(owners[i]);
                     
@@ -802,6 +802,8 @@ var websocketApp = (function () {
                 if (message.startsWith('save-success')) {
                     if (message.substring(message.indexOf(':') + 1) == state.user) {
                         wishlistApp.saveSucceeded();
+                    } else {
+                        wishlistApp.redrawOtherLists();
                     }
                 } else if (message.startsWith('save-fail')) {
                     if (message.substring(message.indexOf(':') + 1) == state.user) {
