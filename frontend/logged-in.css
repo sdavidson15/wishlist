@@ -1,29 +1,5 @@
-body { 
-    font-family: 'Ubuntu', sans-serif;
-    background:#333 url(image/bg-strip-dark.png) 0px 0px;
-    color: snow;
-}
-
-h4 {
-    color: #333;
-}
-
-input {
-    margin-bottom: 0.5em;
-    margin-top: 0.5em;
-    width: 90%;
-    border-radius: .3rem;
-}
-
-
 th {
     background-color: snow;
-}
-
-td {
-    background-color: snow;
-    height: 3em;
-    padding: 0;
 }
 
 span {
@@ -50,61 +26,50 @@ button {
     padding: 2em 2em 2em 2em;
 }
 
-#home-banner {
-    width: 100%;
-    text-align: center;
-    margin-top: 3em;
-}
-
-#home-banner h1 {
-    font-family: "Tangerine", serif;
-    font-size: 7em;
-    color: snow;
-}
-
-#welcome-blurb {
-    width: 60%;
+.wl-price-box {
+    background-color: LightGreen;
+    height: 3em;
+    width: 3em;
     float: left;
-    padding-right: 2em;
-    margin-top: 1em;
-}
-
-#sign-in-form {
+    line-height: 3em;
     text-align: center;
-    width: 40%;
-    background-color: rgb(80, 79, 79);
-    border-radius: .5rem;
-    padding: 1em 1em 1em 1em;
-    margin: 0em 0em 0em 0em;
-    float: left;
-    overflow: auto;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-#sign-in-link {
-    margin-top: 2em;
+.wl-item-content {
+    color: black;
+    width: 8em;
+    float:left;
+    line-height: 3em;
+    padding-left: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.wl-item-content-user {
+    color: black;
+    width: 10em;
+    float:left;
+    line-height: 3em;
+    padding-left: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.wl-item-content-claimed {
+    color: black;
+    width: 10.8em;
+    float:left;
+    line-height: 3em;
+    padding-left: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.wl-checkbox {
     float: right;
-}
-
-#sign-in-button {
-    background-color: #4f8cee;
-    border-color: #4f8cee;
-    border-radius: .3rem;
-    color: snow;
-    font-size: 1.25em;
-}
-
-#home-links-div {
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-    margin-bottom: 2em;
-}
-
-#help-link {
-    position: absolute;
-    bottom: 1.5em;
-    color: snow;
-    padding: 0.5em 0.5em 0.5em 0.5em;
+    margin: 1em 1em 0em 1em;
 }
 
 #banner {
@@ -114,7 +79,7 @@ button {
 }
 
 #banner-text {
-    font-family: Tangerine, serif;
+    font-family: "Tangerine", serif;
     font-size: 5em;
     font-weight: bold;
 }
@@ -129,11 +94,16 @@ button {
 }
 
 #lists table {
-    width: 22%;
+    width: 17%;
     vertical-align: top;
     margin: 0;
     padding: 0;
-    display: inline-block;
+    float: left;
+}
+
+#lists .wl-td {
+    height: 3em;
+    padding: 0;
 }
 
 #other-lists {
@@ -146,35 +116,11 @@ button {
 }
 
 #other-lists table {
-    width: 17%;
-    vertical-align: top;
+    width: 22%;
+    vertical-align: top; 
     margin: 0;
     padding: 0;
-    float: left;
-}
-
-.wl-price-box {
-    background-color: LightGreen;
-    height: 3em;
-    width: 3em;
-    float: left;
-    line-height: 3em;
-    text-align: center;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.wl-item-content {
-    float:left;
-    line-height: 3em;
-    padding-left: 1em;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.wl-checkbox {
-    float: right;
-    margin: 1em 1em 0em 1em;
+    display: inline-block;
 }
 
 #save-div {

@@ -37,8 +37,21 @@ var homepage = (function () {
         },
 
         render = function () {
+            setHomepageCSS();
             $("#logged-out").show();
             setupHomepageListeners();
+        },
+
+        setHomepageCSS = function () {
+            var oldlink = document.getElementById("css-link");
+
+            var newlink = document.createElement("link");
+            newlink.id = "css-link";
+            newlink.setAttribute("rel", "stylesheet");
+            newlink.setAttribute("type", "text/css");
+            newlink.setAttribute("href", "logged-out.css");
+        
+            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
         },
 
         _onSignIn = function () {
@@ -98,6 +111,7 @@ var wishlistApp = (function () {
                 homepage.init();
             } else {
                 homepage.close();
+                setWishlistCSS();
                 $("#logged-in").show();
                 redrawWishList();
             }
@@ -112,7 +126,20 @@ var wishlistApp = (function () {
             owners = null;
         },
 
+        setWishlistCSS = function () {
+            var oldlink = document.getElementById("css-link");
+
+            var newlink = document.createElement("link");
+            newlink.id = "css-link";
+            newlink.setAttribute("rel", "stylesheet");
+            newlink.setAttribute("type", "text/css");
+            newlink.setAttribute("href", "logged-in.css");
+        
+            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+        },
+
         redrawWishList = async function () {
+            document.getElementById("banner-text").appendChild(document.createTextNode(state.session));
             items = await restApp.getItems();
             refreshOwners();
             
@@ -148,28 +175,40 @@ var wishlistApp = (function () {
 
         clearLists = function (includeCurrentUser) {
             if (includeCurrentUser) {
-                var oldSaveDiv = $("#save-div");
-                $("#lists").empty().append('<div id="other-lists"></div>').append(oldSaveDiv);
-                $("#banner-text").text(state.session);
+                var oldSaveDiv = document.getElementById("save-div"),
+                    lists = document.getElementById("lists"),
+                    otherLists = document.createElement("div");
+               
+                otherLists.id = "other-lists";
+                lists.innerHTML = "";
+                lists.appendChild(otherLists);
+                lists.appendChild(oldSaveDiv);
             } else {
-                $("#other-lists").empty();
+                document.getElementById("other-lists").innerHTML = "";
             }
         },
 
         refreshOwners = function () {
             owners = [];
             for (var i = 0; i < items.length; i++) {
-                if (!owners.includes(item.owner)) owners.push(item.owner);
+                if (!owners.includes(items[i].owner)) owners.push(items[i].owner);
             }
         },
 
         populateLists = function (includeCurrentUser) {
             // Create the tables
             for (var i = 0; i < owners.length; i++) {
-                if (includeCurrentUser && owners[i] == state.user)
-                    $("#lists").prepend(createList(state.user));
-                else
-                    $("#other-lists").append(createList(owners[i]));
+                if (includeCurrentUser && owners[i] == state.user) {
+                    var lists = document.getElementById("lists"),
+                        userList = createList(state.user);
+
+                    lists.insertBefore(userList, lists.firstChild);
+                } else { // TODO: I may need something like else if (owners[i] != state.user)
+                    var otherLists = document.getElementById("other-lists"),
+                        newList = createList(owners[i]);
+                    
+                    otherLists.appendChild(newList);;
+            }
             }
 
             // Create the items
@@ -178,20 +217,26 @@ var wishlistApp = (function () {
                     continue;
                 }
 
-                $("#list_" + items[i].owner).append(createItem(items[i]));
+                var currentList = document.getElementById("list_" + items[i].owner),
+                    newItem = createItem(items[i], currentList.childElementCount == 1);
+
+                currentList.appendChild(newItem);
             }
 
-            // TODO: remove this to lock down wishlist
             // Add the "Add item..." cell
             if (includeCurrentUser) { 
-                $("#list_" + state.user).append(createAddItem());
+                // TODO: remove this to lock down wishlist
+                var userList = document.getElementById("list_" + state.user),
+                    addItem = createAddItem();
+
+                userList.appendChild(addItem);
             }
         },
 
         createList = function (owner) {
             var table = document.createElement("table");
-            table.setAttribute("id", "list_" + owner);
-            table.setAttribute("class", "table table-bordered");
+            table.id = "list_" + owner;
+            table.className = "table table-bordered";
 
             var header = document.createElement("th");
             header.appendChild(document.createTextNode(owner));
@@ -202,32 +247,40 @@ var wishlistApp = (function () {
             return table;
         },
 
-        createItem = function (item) {
-            // FIXME: No half measures. Go all jquery on this.
-
+        createItem = function (item, isFirst) {
             // Table data container
             var itemData = document.createElement("td");
+            itemData.className = "wl-td";
+
+            // TODO: move this to "Template"
+            itemData.style.backgroundColor = (isFirst) ? "#69a0f3" : "snow";
 
             // Price box
-            var priceDiv = $('<div />').addClass('wl-price-box').text(item.price);
-            if (state.user == item.owner) priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
+            var priceDiv = document.createElement("div");
+            priceDiv.className = "wl-price-box";
+            priceDiv.innerHTML = item.price;
+            if (state.user == item.owner) {
+                priceDiv.setAttribute("contenteditable", ""); // TODO: remove this to lock wishlist down
+            }
             itemData.appendChild(priceDiv);
 
             // Content div
-            var contentDiv = $('<div />').addClass('wl-item-content').text(item.name);
-            var contentDivWidth = 8;
+            var contentDiv = document.createElement("div");
+            itemData.appendChild(contentDiv);
             if (state.user == item.owner) {
                 contentDiv.setAttribute("contenteditable", "") // TODO: remove this to lock wishlists down
-                contentDivWidth = 10;
+                contentDiv.className = "wl-item-content-user";
             } else if (item.claimer != "" && item.claimer != state.user) {
-                contentDivWidth = 10.8;
+                contentDiv.className = "wl-item-content-claimed";
+            } else {
+                contentDiv.className = "wl-item-content";
             }
-            contentDiv.width(contentDivWidth + 'em');
-            itemData.appendChild(contentDiv);
+            contentDiv.appendChild(document.createTextNode(item.name));
 
             // Checkbox
             if (item.claimer == "" && state.user != item.owner || item.claimer == state.user) {
-                var checkBox = $('<input />').addClass('wl-checkbox');
+                var checkBox = document.createElement("input");	
+                checkBox.className = "wl-checkbox";
                 checkBox.setAttribute("type", "checkbox");
                 if (item.claimer == state.user) {
                     checkBox.setAttribute("checked", "");
@@ -236,22 +289,22 @@ var wishlistApp = (function () {
             }
 
             // Invisible description div
-            var descrDiv = $('<div />').text(item.descr).hide();
+            var descrDiv = document.createElement("div");	
+            descrDiv.setAttribute("style", "display: none;");	
+            descrDiv.innerHTML = item.descr;
             itemData.appendChild(descrDiv);
 
-            // FIXME: jquery
             var itemRow = document.createElement("tr");
             itemRow.appendChild(itemData);
             return itemRow;
         },
 
         createAddItem = function () {
-            // TODO: jquery
             var itemData = document.createElement("td");
             itemData.setAttribute("style", "background-color: LightGray;");
 
             var addItemLink = document.createElement("a");
-            addItemLink.setAttribute("id", "add_item");
+            addItemLink.setAttribute("id", "add-item");
             addItemLink.setAttribute("href", "#");
             addItemLink.setAttribute("style", "color: black;");
             addItemLink.appendChild(document.createTextNode("Add item..."));
@@ -271,38 +324,40 @@ var wishlistApp = (function () {
         saveFailed = async function () {
             setSaveFail();
             await sleep(1000);
-            if (confirm("Changes could not be saved. New changes may have been made to this Wish List. Please refresh your page."
-                + " If the problem persists, please contact the site maintainers using the Help link below.")) {
+            if (confirm("Changes could not be saved.\nNew changes may have been made to this Session, so this page will auto-refresh."
+                + "\nIf the problem persists, please contact the site maintainers using the Help link below.")) {
                 location.reload();
             }
         },
+
+        // TODO: move these save button styling to "Template"
 
         setSaveDefault = function () {
             var saveButton = document.getElementById("save-button");
             saveButton.removeAttribute("disabled");
             saveButton.innerHTML = "Save";
-            saveButton.css('background-color', '#69a0f3');
+            saveButton.style.backgroundColor = "#69a0f3";
         },
 
         setSaveInProgress = function () {
             var saveButton = document.getElementById("save-button");
             saveButton.setAttribute("disabled", "disabled");
             saveButton.innerHTML = "Saving...";
-            saveButton.css('background-color', '#69a0f3');
+            saveButton.style.backgroundColor = "#69a0f3";
         },
 
         setSaveSuccess = function () {
             var saveButton = document.getElementById("save-button");
             saveButton.setAttribute("disabled", "disabled");
             saveButton.innerHTML = "Saved";
-            saveButton.css('background-color', 'green');
+            saveButton.style.backgroundColor = "green";
         },
 
         setSaveFail = function () {
             var saveButton = document.getElementById("save-button");
             saveButton.setAttribute("disabled", "disabled");
             saveButton.innerHTML = "Failed";
-            saveButton.css('background-color', 'red');
+            saveButton.style.backgroundColor = "red";
         },
 
         setupWishlistListeners = function (includeCurrentUser) {
@@ -319,7 +374,7 @@ var wishlistApp = (function () {
                     });
                 }
 
-                document.getElementById("add_item").addEventListener("click", function (event) {
+                document.getElementById("add-item").addEventListener("click", function (event) {
                     event.preventDefault();
                     _onAddItem();
                 });
@@ -329,7 +384,7 @@ var wishlistApp = (function () {
             }
 
             // Add listeners to the other user's items
-            var otherLists = document.getElementById("other_lists");
+            var otherLists = document.getElementById("other-lists");
             for (i = 0; i < otherLists.children.length; i++) {
                 list = otherLists.children[i];
                 for (j = 1; j < list.children.length; j++) {
@@ -339,7 +394,7 @@ var wishlistApp = (function () {
                 }
             }
 
-            document.getElementById("signout_link").addEventListener("click", function () {
+            document.getElementById("signout-link").addEventListener("click", function () {
                 _onSignOut();
             });
         },
@@ -359,7 +414,7 @@ var wishlistApp = (function () {
 
             var newModelItem = { name: "", owner: state.user, claimer: "", price: "" };
             items.push(newModelItem);
-            var newItem = createListItem(newModelItem);
+            var newItem = createItem(newModelItem);
             newItem.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
                 _onRemoveItem(e.target);
@@ -623,7 +678,7 @@ var restApp = (function () {
                 items.push({
                     name: respItems[i].Name,
                     owner: respItems[i].Owner,
-                    claimer: (_owner != state.user) ? respItems[i].Claimer : "",
+                    claimer: (respItems[i].Owner != state.user) ? respItems[i].Claimer : "",
                     price: (respItems[i].Price != null) ? respItems[i].Price : "",
                     descr: respItems[i].Descr
                 });
@@ -670,6 +725,9 @@ var websocketApp = (function () {
                 userItems: userItems,
                 otherItems: otherItems
             };
+
+            // TODO: remove this
+            wishlistApp.saveSucceeded();
 
             socket.send("update:" + JSON.stringify(h));
         },
