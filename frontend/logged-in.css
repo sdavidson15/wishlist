@@ -121,23 +121,24 @@ button {
     margin-bottom: 2em;
 }
 
-#description-div {
-    height: 82%; 
-    text-align: left;
-}
-
-#item-description {
+#item-descr {
     width: 40%;
     border: none;
     border-radius: .3rem;
-    background-color: white;
+    background-color: snow;
     box-shadow: 10px 10px 5px #888888;
     font-size: 1rem;
     text-align: center;
     padding: 1em;
-   margin: 1em;
+    margin: 1em;
     position: absolute;
     left: 30%;
     top: 30%;
-    z-index: 10;
+    z-index: 10;    
+    display: none;
+}
+
+#item-descr div {
+    height: 82%; 
+    text-align: left;
 }

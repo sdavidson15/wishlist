@@ -497,10 +497,11 @@ var wishlistApp = (function () {
             }
 
             var itemRow = null;
-            if (target.children.length > 1)
+            if (target.children.length > 1) {
                 itemRow = target.parentElement;
-            else
+            } else {
                 itemRow = target.parentElement.parentElement;
+            }
 
             // FIXME: get text, not inner html
             var owner = itemRow.parentElement.firstChild.firstChild.innerHTML,
@@ -509,17 +510,26 @@ var wishlistApp = (function () {
                 descr = itemRow.firstChild.lastChild.innerHTML;
             descr = descr.replace(/\r?\n/g, "<br>");
 
-            var nameSpan = $('<span />').text(name),
-                priceSpan = $('<span />').text(' (' + price + ')'),
-                descrDiv = $('<div />').text(descr).attr('id', 'description-div');
+            var nameSpan = document.createElement("span");
+            nameSpan.appendChild(document.createTextNode(name));
+
+            var priceSpan = document.createElement("span"),
+                priceStr = (price.length > 0) ? " (" + price + ")" : "";
+            priceSpan.appendChild(document.createTextNode(priceStr));
+
+            var descrDiv = document.createElement("div");
+            descr = (descr.length > 0) ? descr : "No description yet.";
+            descrDiv.appendChild(document.createTextNode(descr));
 
             if (state.user == owner && !state.isLockedDown) {
                 descrDiv.setAttribute("contenteditable", "");
             }
 
-            var closeBtn = $('<button value="Close" />').css('background-color', 'LightGray');
-            closeBtn.addEventListener("click", function () {
-                _onHideDescr(itemRow.firstChild.lastChild, false);
+            var closeBtn = document.createElement("button");
+            closeBtn.appendChild(document.createTextNode("Close"));	
+            closeBtn.style.backgroundColor = "LightGray"; // TODO: move this to "Template" or css	
+            closeBtn.addEventListener("click", function () {	
+                _onHideDescr(itemRow.firstChild.lastChild, false);	
             });
 
             div.appendChild(nameSpan);
@@ -530,13 +540,17 @@ var wishlistApp = (function () {
             div.appendChild(closeBtn);
 
             if (state.user == owner) {
-                var saveBtn = $('<button value="Save" />');
-                saveBtn.addEventListener("click", function () {
-                    _onHideDescr(itemRow.firstChild.lastChild, true);
+                var saveBtn = document.createElement("button");	
+                saveBtn.appendChild(document.createTextNode("Save"));	
+                saveBtn.addEventListener("click", function () {	
+                    _onHideDescr(itemRow.firstChild.lastChild, true);	
                 });
-                div.appendChild(document.createTextNode(" "));
+
+                div.appendChild(document.createTextNode(" "));	
                 div.appendChild(saveBtn);
             }
+
+            $("#item-descr").show();
         },
 
         _onHideDescr = function (descrDiv, needsSave) {
@@ -551,7 +565,8 @@ var wishlistApp = (function () {
                 _onSave();
             }
             div.innerHTML = "";
-            div.hide();
+            
+            $("#item-descr").hide();
         },
 
         _onSave = async function () {
