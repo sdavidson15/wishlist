@@ -33,7 +33,7 @@ func Start(m *common.Manager, router *mux.Router, uri string) {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
 
 	log.Print(fmt.Sprintf("Serving on %s", uri))
-	log.Fatal(http.ListenAndServe(uri, router))
+	log.Fatal(http.ListenAndServeTLS(uri, "cert.pem", "key.pem", router))
 }
 
 func handleMessages(w http.ResponseWriter, r *http.Request) {
