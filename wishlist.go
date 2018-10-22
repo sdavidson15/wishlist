@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"flag"
+	"log"
 	"os"
 	"strings"
-
 	"wishlist/common"
 	"wishlist/rest"
 	"wishlist/storage"
@@ -24,8 +24,19 @@ func main() {
 	store := getStorage(dbDriver, dbSource, *inmem)
 	manager := common.NewManager(store)
 
+	// Check of SSL certificates exist
+	_, err1 := os.Stat("cert.pem")
+	_, err2 := os.Stat("key.pem")
+
+	useTLS := true
+	if os.IsNotExist(err1) || os.IsNotExist(err2) {
+		log.Printf("Missing a SSL certificate.")
+		restUri = ":8080"
+		useTLS = false
+	}
+
 	router := rest.Setup(manager, restUri)
-	websocket.Start(manager, router, restUri)
+	websocket.Start(manager, router, restUri, useTLS)
 }
 
 func getConfiguration(filePath string) (dbDriver, dbSource, restUri string) {

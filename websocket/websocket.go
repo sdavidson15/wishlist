@@ -24,7 +24,7 @@ type response struct {
 	session string
 }
 
-func Start(m *common.Manager, router *mux.Router, uri string) {
+func Start(m *common.Manager, router *mux.Router, uri string, useTLS bool) {
 	manager = m
 
 	router.HandleFunc("/ws/{session:[a-zA-Z]+}", handleMessages)
@@ -33,7 +33,13 @@ func Start(m *common.Manager, router *mux.Router, uri string) {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
 
 	log.Print(fmt.Sprintf("Serving on %s", uri))
-	log.Fatal(http.ListenAndServeTLS(uri, "cert.pem", "key.pem", router))
+
+	if useTLS {
+		log.Fatal(http.ListenAndServeTLS(uri, "cert.pem", "key.pem", router))
+		return
+	}
+
+	log.Fatal(http.ListenAndServe(uri, router))
 }
 
 func handleMessages(w http.ResponseWriter, r *http.Request) {
