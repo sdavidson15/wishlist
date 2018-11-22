@@ -282,7 +282,7 @@ var wishlistApp = (function () {
             // Price box
             var priceDiv = document.createElement("div");
             priceDiv.className = "wl-price-box";
-            priceDiv.innerHTML = item.price;
+            priceDiv.innerText = item.price;
             if (state.user == item.owner && !state.isLockedDown) {
                 priceDiv.setAttribute("contenteditable", "");
             }
@@ -318,7 +318,7 @@ var wishlistApp = (function () {
             // Invisible description div
             var descrDiv = document.createElement("div");	
             descrDiv.setAttribute("style", "display: none;");	
-            descrDiv.innerHTML = item.descr;
+            descrDiv.textContent = item.descr;
             itemData.appendChild(descrDiv);
 
             var itemRow = document.createElement("tr");
@@ -482,7 +482,7 @@ var wishlistApp = (function () {
                 return;
             }
 
-            if (confirm("Delete item " + itemDiv.innerHTML + "?")) {
+            if (confirm("Delete item " + itemDiv.innerText + "?")) {
                 table.deleteRow(index);
                 // TODO: remove item from items
                 return;
@@ -503,12 +503,10 @@ var wishlistApp = (function () {
                 itemRow = target.parentElement.parentElement;
             }
 
-            // FIXME: get text, not inner html
-            var owner = itemRow.parentElement.firstChild.firstChild.innerHTML,
-                name = itemRow.firstChild.children[1].innerHTML,
-                price = itemRow.firstChild.firstChild.innerHTML,
-                descr = itemRow.firstChild.lastChild.innerHTML;
-            descr = descr.replace(/\r?\n/g, "<br>");
+            var owner = itemRow.parentElement.firstChild.firstChild.innerText,
+                name = itemRow.firstChild.children[1].innerText,
+                price = itemRow.firstChild.firstChild.innerText,
+                descr = itemRow.firstChild.lastChild.textContent;
 
             var nameSpan = document.createElement("span");
             nameSpan.appendChild(document.createTextNode(name));
@@ -556,12 +554,8 @@ var wishlistApp = (function () {
         _onHideDescr = function (descrDiv, needsSave) {
             var div = document.getElementById("item-descr");
             if (needsSave) {
-                // FIXME: get text not inner html
-                var descr = div.getElementsByTagName("div")[0].innerHTML;
-                descr = descr.replace(new RegExp("<div>", "g"), "")
-                    .replace(new RegExp("</div>", "g"), "\n")
-                    .replace(new RegExp("<br>", "g"), "\n");
-                descrDiv.innerHTML = descr;
+                var descr = div.getElementsByTagName("div")[0].textContent;
+                descrDiv.textContent = descr;
                 _onSave();
             }
             div.innerHTML = "";
@@ -578,13 +572,9 @@ var wishlistApp = (function () {
             // Gather the update from this user
             var userList = document.getElementById("lists").children[0];
             for (j = 1; j < userList.children.length - 1; j++) {
-                // FIXME: get text, not inner html
-                var itemName = userList.children[j].firstChild.children[1].innerHTML;
-                itemName = itemName.replace(new RegExp("<div>", "g"), "")
-                    .replace(new RegExp("</div>", "g"), "\n")
-                    .replace(new RegExp("<br>", "g"), "\n");
-                var itemPrice = userList.children[j].firstChild.firstChild.innerHTML;
-                var itemDescr = userList.children[j].firstChild.lastChild.innerHTML;
+                var itemName = userList.children[j].firstChild.children[1].innerText,
+                    itemPrice = userList.children[j].firstChild.firstChild.innerText,
+                    itemDescr = userList.children[j].firstChild.lastChild.textContent;
                 userItems.push({
                     Name: itemName,
                     Session: state.session,
@@ -599,17 +589,17 @@ var wishlistApp = (function () {
             // Gather the update from the other users
             var otherLists = document.getElementById("other-lists");
             for (i = 0; i < otherLists.children.length; i++) {
-                var list = otherLists.children[i];
-                var listOwner = list.firstChild.firstChild.innerHTML;
+                var list = otherLists.children[i],
+                    listOwner = list.firstChild.firstChild.innerText;
                 for (j = 1; j < list.children.length; j++) {
                     var itemData = list.children[j].firstChild;
                     if (itemData.children.length == 4) {
-                        var checkbox = itemData.children[2];
-                        var itemClaimer = (checkbox.checked) ? state.user : "";
-                        var itemPrice = itemData.firstChild.innerHTML;
-                        var itemDescr = itemData.lastChild.innerHTML;
+                        var checkbox = itemData.children[2],
+                            itemClaimer = (checkbox.checked) ? state.user : "",
+                            itemPrice = itemData.firstChild.innerText,
+                            itemDescr = itemData.lastChild.textContent;
                         claimableItems.push({
-                            Name: itemData.children[1].innerHTML,
+                            Name: itemData.children[1].innerText,
                             Session: state.session,
                             Owner: listOwner,
                             Claimer: itemClaimer,
