@@ -11,7 +11,7 @@ import (
 
 func Setup(manager *common.Manager, restUri string) *mux.Router {
 	// Redirect http to https
-	go http.ListenAndServe(":80", http.HandlerFunc(redirect))
+	// go http.ListenAndServe(":80", http.HandlerFunc(redirect))
 
 	router := mux.NewRouter().StrictSlash(true)
 	h := &Handler{manager}
