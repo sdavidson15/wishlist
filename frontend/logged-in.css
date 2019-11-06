@@ -141,4 +141,5 @@ button {
 #item-descr div {
     height: 82%; 
     text-align: left;
+    white-space: pre-wrap;
 }
