@@ -446,8 +446,8 @@ var wishlistApp = (function () {
             }
 
             var table = document.getElementById("list_" + state.user);
-            if (table.children.length >= 17) {
-                alert("No more than 15 items are allowed per list.");
+            if (table.children.length >= 10) {
+                alert("No more than 8 items are allowed per list.");
                 return;
             }
 
