@@ -35,6 +35,10 @@ type UpdateRequest struct {
 	OtherItems model.Items
 }
 
+func (h *Handler) SetManager(newManager *common.Manager) {
+	h.manager = newManager
+}
+
 func (h *Handler) SignIn(w http.ResponseWriter, r *http.Request) {
 	var sir SignInRequest
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, byteLimit))

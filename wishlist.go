@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -10,13 +11,12 @@ import (
 	"wishlist/rest"
 	"wishlist/storage"
 	"wishlist/storage/imdb"
-	"wishlist/storage/mysql"
 	"wishlist/websocket"
 )
 
 func main() {
 	flags := flag.NewFlagSet("wishlist-flag-set", flag.ExitOnError)
-	inmem := flags.Bool("inmem", false, "Enter value true to use a database system that writes files into this project directory, rather than a MySQL database.")
+	inmem := flags.Bool("inmem", true, "Enter value true to use a database system that writes files into this project directory, rather than an external database.")
 
 	flags.Parse(os.Args[1:])
 
@@ -79,12 +79,12 @@ func getStorage(dbDriver, dbSource string, inmem bool) storage.Storage {
 		imdb.StartConnection()
 		store = imdb
 	} else {
-		mysqlDB := &mysql.MySqlDb{}
-		err := mysqlDB.StartConnection(mysql.NewConfig(dbDriver, dbSource))
-		if err != nil {
-			panic(err)
-		}
-		store = mysqlDB
+		msg := fmt.Sprintf(
+			"%s\n%s",
+			`External database connection not supported for local runs.`,
+			`Please run with flag "-inmem" to use the local filesystem as the persistence layer.`,
+		)
+		panic(msg)
 	}
 
 	return store

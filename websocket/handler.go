@@ -1,9 +1,9 @@
 package websocket
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
-	"encoding/json"
 
 	"wishlist/common"
 	"wishlist/model"
@@ -17,7 +17,7 @@ type Update struct {
 }
 
 func handleMessage(manager *common.Manager, msg string) (string, error) {
-	if (!strings.HasPrefix(msg, "update:")) {
+	if !strings.HasPrefix(msg, "update:") {
 		return ``, fmt.Errorf("Unrecognized message format")
 	}
 
@@ -30,8 +30,8 @@ func handleMessage(manager *common.Manager, msg string) (string, error) {
 
 	if err := manager.UpdateLists(
 		u.Session,
-		u.User, 
-		u.UserItems, 
+		u.User,
+		u.UserItems,
 		u.ClaimItems,
 	); err != nil {
 		return fmt.Sprintf("save-fail:%s", u.User), nil
