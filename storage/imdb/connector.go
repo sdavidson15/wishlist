@@ -146,11 +146,11 @@ func getFilePath(sessionName, suffix string, isSnapshot bool) string {
 
 	pathSuffix := ""
 	if isSnapshot {
-		pathSuffix = "\\snapshot"
+		pathSuffix = "/snapshot"
 	}
 
-	return currentDirectory + "\\storage\\imdb\\db" + pathSuffix +
-		fmt.Sprintf("\\%s_%s", util.RemoveAllWhiteSpace(strings.ToLower(sessionName)), suffix)
+	return currentDirectory + "/storage/imdb/db" + pathSuffix +
+		fmt.Sprintf("/%s_%s", util.RemoveAllWhiteSpace(strings.ToLower(sessionName)), suffix)
 }
 
 func timestamp() string {

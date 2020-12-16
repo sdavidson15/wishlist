@@ -31,7 +31,7 @@ func main() {
 	useTLS := true
 	if os.IsNotExist(err1) || os.IsNotExist(err2) {
 		log.Printf("Missing a SSL certificate.")
-		restUri = ":8080"
+		restUri = ":80"
 		useTLS = false
 	}
 
