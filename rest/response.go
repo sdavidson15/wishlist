@@ -2,10 +2,12 @@ package rest
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
 func sendServerError(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("[ERROR] Server error: %v\n", err)
 	sendResponse(w, r, err, http.StatusInternalServerError)
 }
 

@@ -11,5 +11,6 @@ ADD config.txt config.txt
 ADD frontend frontend
 ADD storage/imdb/db storage/imdb/db
 COPY --from=0 /go/src/wishlist/main .
+ENV AWS_DEFAULT_REGION=us-east-1
 
-CMD ["./main", "-inmem"]
+CMD ["./main"]
