@@ -9,6 +9,7 @@ import (
 	"wishlist/common"
 	"wishlist/rest"
 	"wishlist/storage"
+	"wishlist/storage/ddb"
 	"wishlist/storage/imdb"
 	"wishlist/storage/mysql"
 	"wishlist/websocket"
@@ -16,12 +17,13 @@ import (
 
 func main() {
 	flags := flag.NewFlagSet("wishlist-flag-set", flag.ExitOnError)
-	inmem := flags.Bool("inmem", false, "Enter value true to use a database system that writes files into this project directory, rather than a MySQL database.")
+	mysqlStore := flags.Bool("mysql", false, "Enter value true to use a MySQL database as the database.")
+	ddbStore := flags.Bool("ddb", false, "Enter value true to use a DynamoDB table as the database.")
 
 	flags.Parse(os.Args[1:])
 
 	dbDriver, dbSource, restUri := getConfiguration("config.txt")
-	store := getStorage(dbDriver, dbSource, *inmem)
+	store := getStorage(dbDriver, dbSource, *ddbStore, *mysqlStore)
 	manager := common.NewManager(store)
 
 	// Check of SSL certificates exist
@@ -72,20 +74,25 @@ func getConfiguration(filePath string) (dbDriver, dbSource, restUri string) {
 	return
 }
 
-func getStorage(dbDriver, dbSource string, inmem bool) storage.Storage {
+func getStorage(dbDriver, dbSource string, ddbStore bool, mysqlStore bool) storage.Storage {
 	var store storage.Storage
-	if inmem {
-		imdb := &imdb.Imdb{}
-		imdb.StartConnection()
-		store = imdb
-	} else {
+	if ddbStore {
+		ddb, err := ddb.NewDdb()
+		if err != nil {
+			panic(err)
+		}
+		store = ddb
+	} else if mysqlStore {
 		mysqlDB := &mysql.MySqlDb{}
 		err := mysqlDB.StartConnection(mysql.NewConfig(dbDriver, dbSource))
 		if err != nil {
 			panic(err)
 		}
 		store = mysqlDB
+	} else {
+		imdb := &imdb.Imdb{}
+		imdb.StartConnection()
+		store = imdb
 	}
-
 	return store
 }
