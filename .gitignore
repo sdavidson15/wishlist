@@ -1,2 +1,4 @@
 *.exe
 wishlist
+main
+infra/*
