@@ -784,7 +784,9 @@ var websocketApp = (function () {
                 state.socketConnected = true;
             };
             socket.onerror = function (error) {
-                // do nothing
+                console.error('Websocket encounter and error: ', error.message);
+                console.error('Closing socket');
+                socket.close();
             };
             socket.onmessage = function (event) {
                 var message = event.data;
@@ -805,6 +807,14 @@ var websocketApp = (function () {
             };
             socket.onclose = function (event) {
                 state.socketConnected = false;
+                var sessionCookie = cookieHandler.getSession();
+                var userCookie = cookieHandler.getUser();
+                if (!isBlankString(sessionCookie) && !isBlankString(userCookie)) {
+                    console.log('Socket closed, reconnecting...');
+                    setTimeout(function() {
+                        init();
+                    }, 1000);
+                }
             };
         },
 
